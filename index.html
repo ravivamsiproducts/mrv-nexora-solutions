@@ -36,8 +36,37 @@
 </div><p class="portfolio-note">Project labels reflect current showcase status; features and availability may evolve.</p></div></section>
 <section class="brand-showcase"><div class="container"><img src="assets/mrv-nexora-full.svg" alt="MRV Nexora Solutions — Modern, Reliable, Vision"></div></section>
 <section class="about section-pad" id="about"><div class="container about-grid"><div><p class="eyebrow blue">THE MRV APPROACH</p><h2>Modern in approach.<br><span>Reliable by design.</span></h2></div><div class="about-content"><p class="about-lead">We believe good technology is more than code. It is clarity, care and a better way to get things done.</p><div class="values"><div><b>M</b><span><strong>Modern</strong><small>Fresh thinking and purposeful design.</small></span></div><div><b>R</b><span><strong>Reliable</strong><small>Dependable experiences built with care.</small></span></div><div><b>V</b><span><strong>Vision</strong><small>Solutions shaped around where you want to go.</small></span></div></div></div></div></section>
-<section class="cta-section" id="contact"><div class="container cta-inner"><div><p class="eyebrow">HAVE AN IDEA?</p><h2>Let's make your<br>next move <span>count.</span></h2><p>Tell us what you're planning. We'll help you find a practical way to bring it to life.</p></div><a class="btn btn-light" href="mailto:hello@mrvnexora.com?subject=Project%20Enquiry">Start your project <span>↗</span></a></div></section>
+<section class="contact-section section-pad" id="contact">
+  <div class="container">
+    <div class="contact-callout"><div><p class="eyebrow">LET'S CREATE WHAT'S NEXT</p><h2>Have an Idea? <span>Let's Build It Together.</span></h2><p>Tell us what you want to build. We'll help you find the right solution.</p></div><div class="contact-callout-mark">MRV<span>↗</span></div></div>
+    <div class="contact-layout">
+      <div class="contact-info-panel"><p class="eyebrow blue">GET IN TOUCH</p><h3>Let's start a<br><span>conversation.</span></h3><p class="contact-info-intro">Share a little about your business or idea. We'll connect with you to understand what you need.</p>
+        <div class="contact-info-list">
+          <a class="contact-info-item" id="contact-email-link" href="mailto:hello@mrvnexora.com"><span class="contact-info-icon">✉</span><span><small>BUSINESS EMAIL</small><b id="contact-email">hello@mrvnexora.com</b></span></a>
+          <a class="contact-info-item" id="contact-phone-link" href="#"><span class="contact-info-icon">☎</span><span><small>CONTACT NUMBER</small><b id="contact-phone">Contact details coming soon</b></span></a>
+          <a class="contact-info-item" id="contact-whatsapp-link" href="#" target="_blank" rel="noopener"><span class="contact-info-icon">◉</span><span><small>WHATSAPP ENQUIRY</small><b id="contact-whatsapp">Chat with us</b></span></a>
+          <div class="contact-info-item"><span class="contact-info-icon">⌖</span><span><small>LOCATION & AVAILABILITY</small><b id="contact-location">Hyderabad & Secunderabad, India</b><em id="contact-availability">Serving clients across India and worldwide</em></span></div>
+          <div class="contact-info-item"><span class="contact-info-icon">◷</span><span><small>BUSINESS HOURS</small><b id="contact-hours">Monday – Saturday, 9:30 AM – 6:30 PM IST</b></span></div>
+        </div>
+        <div class="contact-social"><small>FOLLOW OUR JOURNEY</small><div id="contact-social-links"><span>Social links will be updated soon.</span></div></div>
+      </div>
+      <div class="enquiry-panel"><div class="enquiry-heading"><span>PROJECT ENQUIRY</span><small>Tell us about your idea</small></div>
+        <form id="project-enquiry-form">
+          <div class="form-grid"><label>Full Name <b>*</b><input name="customer_name" autocomplete="name" required maxlength="100" placeholder="Your full name"></label>
+          <label>Email Address <b>*</b><input name="email" type="email" autocomplete="email" required maxlength="180" placeholder="you@example.com"></label>
+          <label>Mobile Number <b>*</b><input name="phone" type="tel" autocomplete="tel" required maxlength="20" placeholder="+91 98765 43210"></label>
+          <label>Business Name <small>(Optional)</small><input name="business_name" maxlength="120" placeholder="Your business or brand"></label>
+          <label class="form-full">Service Required <b>*</b><select name="project_type" required><option value="">Choose a service</option><option>Website Development</option><option>E-commerce Development</option><option>Custom Web Applications</option><option>Admin Dashboards & CRM</option><option>API & Database Integration</option><option>Payment Gateway Integration</option><option>Mobile App Development</option><option>Software Development</option><option>Digital Marketing</option><option>Other / Custom Requirement</option></select></label>
+          <label class="form-full">Estimated Project Budget <select name="estimated_budget" id="budget-options"><option value="">Select an approximate budget</option><option>Under ₹10,000</option><option>₹10,000 – ₹25,000</option><option>₹25,000 – ₹50,000</option><option>₹50,000 – ₹1,00,000</option><option>Above ₹1,00,000</option><option>Not sure yet – Let's discuss</option></select><small class="field-hint">These are indicative ranges and can be discussed based on your requirements.</small></label>
+          <label class="form-full">Project Details <b>*</b><textarea name="description" required maxlength="4000" rows="5" placeholder="Describe your idea, goals and any important features..."></textarea></label></div>
+          <button class="btn btn-primary enquiry-submit" type="submit"><span class="submit-label">Submit Project Enquiry</span><span class="submit-arrow">↗</span></button>
+          <p class="form-privacy">Your information is used only to respond to your enquiry.</p><div id="enquiry-feedback" class="form-feedback" role="status" aria-live="polite"></div>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
 </main>
 <footer class="footer"><div class="container footer-top"><a class="brand brand-footer" href="#home"><img class="footer-logo" src="assets/mrv-nexora-header.svg" alt="MRV Nexora Solutions"></a><p>Modern · Reliable · Vision<br><b>Innovate. Build. Grow.</b></p><div class="footer-links"><a href="#services">Services</a><a href="#work">Portfolio</a><a href="about/about.html">About</a><a href="#contact">Contact</a></div></div><div class="container footer-bottom"><span>© <span id="year"></span> MRV Nexora Solutions. All rights reserved.</span><span>Built with purpose. Designed for growth.</span></div></footer>
-<script src="script.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="script.js"></script>
 </body></html>
