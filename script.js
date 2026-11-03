@@ -61,10 +61,10 @@ if ("IntersectionObserver" in window) {
     values.customer_name=String(values.customer_name||"").trim();values.email=String(values.email||"").trim();values.phone=String(values.phone||"").trim();values.business_name=String(values.business_name||"").trim();values.project_type=String(values.project_type||"").trim();values.estimated_budget=String(values.estimated_budget||"").trim();values.description=String(values.description||"").trim();
     if(!values.customer_name||!values.email||!values.phone||!values.project_type||!values.description){feedback.textContent="Please complete all required fields.";feedback.className="form-feedback show error";return;}
     button.disabled=true;label.textContent="Submitting...";feedback.className="form-feedback";
-    const {data,error}=await client.from("project_enquiries").insert({customer_name:values.customer_name,business_name:values.business_name||null,email:values.email,phone:values.phone,project_type:values.project_type,estimated_budget:values.estimated_budget||null,description:values.description,status:"new"}).select("id").single();
+    const {data,error}=await client.from("project_enquiries").insert({customer_name:values.customer_name,business_name:values.business_name||null,email:values.email,phone:values.phone,project_type:values.project_type,estimated_budget:values.estimated_budget||null,description:values.description,status:"new"});
     if(error){feedback.textContent="We couldn't submit your enquiry right now. Please try again in a moment or contact us directly.";feedback.className="form-feedback show error";button.disabled=false;label.textContent="Submit Project Enquiry";return;}
     feedback.textContent="Thank you! Your project enquiry has been received. Our team will review it and get in touch with you soon.";feedback.className="form-feedback show success";form.reset();button.disabled=false;label.textContent="Submit Project Enquiry";
     // Confirmation email is sent by the secure Edge Function once the email provider is configured.
-    try{await fetch(SUPABASE_URL+"/functions/v1/send-enquiry-confirmation",{method:"POST",headers:{"Content-Type":"application/json","apikey":SUPABASE_ANON_KEY},body:JSON.stringify({enquiry_id:data.id})});}catch(_){}
+    try{await fetch(SUPABASE_URL+"/functions/v1/send-enquiry-confirmation",{method:"POST",headers:{"Content-Type":"application/json","apikey":SUPABASE_ANON_KEY},body:JSON.stringify({customer_name:values.customer_name,email:values.email,project_type:values.project_type})});}catch(_){}
   });
 })();
