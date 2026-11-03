@@ -1,0 +1,44 @@
+(() => {
+const URL="https://pjrturqykjvplyrbvjte.supabase.co";
+const KEY="sb_publishable_-M4jYj9CgTglX-IPOCfT-w_tedDSZFF";
+const db=window.supabase.createClient(URL,KEY);
+const $=id=>document.getElementById(id);
+let enquiries=[],selected=null,adminUser=null;
+const statuses=[["new","New"],["contacted","Contacted"],["in_progress","In Progress"],["quoted","Quoted"],["closed","Closed"]];
+const safe=(v)=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function showLogin(message=""){ $("login-view").hidden=false;$("dashboard-view").hidden=true;if(message){$("login-feedback").textContent=message;$("login-feedback").className="feedback error";}}
+function showDashboard(){ $("login-view").hidden=true;$("dashboard-view").hidden=false;$("admin-email").textContent=adminUser.email||"";loadEnquiries();loadSettings();}
+async function verifySession(){
+ const {data:{session}}=await db.auth.getSession();if(!session){showLogin();return;}
+ const role=String(session.user.app_metadata?.role||"");
+ if(role!=="admin"){await db.auth.signOut();showLogin("This account does not have administrator access. Please contact the site owner.");return;}
+ adminUser=session.user;showDashboard();
+}
+$("login-form").addEventListener("submit",async e=>{e.preventDefault();const f=new FormData(e.currentTarget);const b=e.currentTarget.querySelector("button");b.disabled=true;b.textContent="Signing in…";const {data,error}=await db.auth.signInWithPassword({email:f.get("email"),password:f.get("password")});b.disabled=false;b.textContent="Sign in to dashboard";if(error){showLogin("Sign-in failed. Check your email and password.");return;}adminUser=data.user;if(String(data.user.app_metadata?.role||"")!=="admin"){await db.auth.signOut();showLogin("Signed in, but this account is not assigned the admin role.");return;}showDashboard();});
+$("logout-button").addEventListener("click",async()=>{await db.auth.signOut();adminUser=null;showLogin();});
+document.querySelectorAll(".side-link").forEach(btn=>btn.addEventListener("click",()=>{document.querySelectorAll(".side-link").forEach(x=>x.classList.toggle("active",x===btn));const settings=btn.dataset.view==="settings";$("enquiries-view").hidden=settings;$("settings-view").hidden=!settings;$("page-title").textContent=settings?"Contact Settings":"Project Enquiries";}));
+async function loadEnquiries(){
+ $("enquiry-list").innerHTML='<p class="empty">Loading enquiries…</p>';
+ const {data,error}=await db.from("project_enquiries").select("*").order("created_at",{ascending:false});
+ if(error){$("enquiry-list").innerHTML='<p class="empty">Could not load enquiries. Please refresh or check admin permissions.</p>';return;}
+ enquiries=data||[];$("total-count").textContent=enquiries.length;$("new-count").textContent=enquiries.filter(x=>x.status==="new").length;$("progress-count").textContent=enquiries.filter(x=>x.status==="in_progress").length;$("closed-count").textContent=enquiries.filter(x=>x.status==="closed").length;$("nav-count").textContent=enquiries.filter(x=>x.status==="new").length;renderEnquiries();
+}
+function renderEnquiries(){
+ const term=$("enquiry-search").value.toLowerCase(),filter=$("status-filter").value;
+ const rows=enquiries.filter(x=>(!filter||x.status===filter)&&[x.customer_name,x.email,x.phone,x.project_type,x.business_name].some(v=>String(v||"").toLowerCase().includes(term)));
+ if(!rows.length){$("enquiry-list").innerHTML='<p class="empty">No enquiries match this view.</p>';return;}
+ $("enquiry-list").innerHTML=rows.map(x=>{const label=statuses.find(s=>s[0]===x.status)?.[1]||x.status;return '<article class="enquiry-card"><div><h3>'+safe(x.customer_name)+' <span class="status-tag">'+safe(label)+'</span></h3><p>'+safe(x.project_type)+' · '+safe(x.estimated_budget||"Budget not specified")+'</p><p>'+safe(x.email||"No email")+' · '+safe(x.phone)+' · '+new Date(x.created_at).toLocaleString()+'</p></div><div class="card-actions"><select aria-label="Update status" data-status="'+x.id+'">'+statuses.map(s=>'<option value="'+s[0]+'" '+(s[0]===x.status?"selected":"")+'>'+s[1]+'</option>').join("")+'</select><button class="tiny-btn" data-details="'+x.id+'">View details</button><a class="tiny-btn whatsapp" target="_blank" rel="noopener" href="https://wa.me/'+String(x.phone||"").replace(/\D/g,"")+'">WhatsApp</a><a class="tiny-btn" href="tel:'+safe(x.phone)+'">Call</a></div></article>';}).join("");
+ document.querySelectorAll("[data-status]").forEach(el=>el.addEventListener("change",()=>updateStatus(el.dataset.status,el.value)));
+ document.querySelectorAll("[data-details]").forEach(el=>el.addEventListener("click",()=>openDetails(el.dataset.details)));
+}
+async function updateStatus(id,status){const {error}=await db.from("project_enquiries").update({status,updated_at:new Date().toISOString()}).eq("id",id);if(error){alert("Status could not be updated. Check admin permissions.");return;}const item=enquiries.find(x=>x.id===id);if(item)item.status=status;loadEnquiries();}
+function openDetails(id){selected=enquiries.find(x=>x.id===id);if(!selected)return;$("detail-name").textContent=selected.customer_name;$("admin-notes").value=selected.admin_notes||"";const fields=[["Business",selected.business_name],["Email",selected.email],["Phone",selected.phone],["Service",selected.project_type],["Budget",selected.estimated_budget],["Submitted",new Date(selected.created_at).toLocaleString()],["Project Details",selected.description],["Required Features",selected.required_features],["Expected Timeline",selected.expected_timeline]];$("detail-content").innerHTML=fields.filter(f=>f[1]).map(f=>'<div><b>'+safe(f[0])+'</b>'+safe(f[1])+'</div>').join("");$("detail-whatsapp").onclick=()=>window.open("https://wa.me/"+String(selected.phone||"").replace(/\D/g,""),"_blank","noopener");$("detail-modal").hidden=false;}
+$("modal-close").addEventListener("click",()=>$("detail-modal").hidden=true);
+$("detail-modal").addEventListener("click",e=>{if(e.target===$("detail-modal"))$("detail-modal").hidden=true;});
+$("save-notes").addEventListener("click",async()=>{if(!selected)return;const {error}=await db.from("project_enquiries").update({admin_notes:$("admin-notes").value,updated_at:new Date().toISOString()}).eq("id",selected.id);if(error){alert("Notes could not be saved.");return;}selected.admin_notes=$("admin-notes").value;alert("Admin notes saved.");});
+$("refresh-enquiries").addEventListener("click",loadEnquiries);$("enquiry-search").addEventListener("input",renderEnquiries);$("status-filter").addEventListener("change",renderEnquiries);
+async function loadSettings(){const {data,error}=await db.from("site_settings").select("contact_settings").eq("id","contact").maybeSingle();if(error||!data)return;const s=data.contact_settings||{},form=$("settings-form");["business_email","contact_number","whatsapp_number","location","service_availability","business_hours"].forEach(k=>form.elements[k].value=s[k]||"");["instagram","linkedin","facebook","youtube"].forEach(k=>form.elements[k].value=s.social_links?.[k]||"");form.elements.budget_ranges.value=Array.isArray(s.budget_ranges)?s.budget_ranges.join("\n"):"";}
+$("settings-form").addEventListener("submit",async e=>{e.preventDefault();const form=e.currentTarget,fd=new FormData(form),feedback=$("settings-feedback"),button=form.querySelector("button[type=submit]");const cleanUrl=v=>{v=String(v||"").trim();if(!v)return "";try{const u=new URL(v);return ["https:","http:"].includes(u.protocol)?u.href:"";}catch{return "";}};const settings={business_email:String(fd.get("business_email")||"").trim(),contact_number:String(fd.get("contact_number")||"").trim(),whatsapp_number:String(fd.get("whatsapp_number")||"").trim(),location:String(fd.get("location")||"").trim(),service_availability:String(fd.get("service_availability")||"").trim(),business_hours:String(fd.get("business_hours")||"").trim(),social_links:{instagram:cleanUrl(fd.get("instagram")),linkedin:cleanUrl(fd.get("linkedin")),facebook:cleanUrl(fd.get("facebook")),youtube:cleanUrl(fd.get("youtube"))},budget_ranges:String(fd.get("budget_ranges")||"").split("\n").map(x=>x.trim()).filter(Boolean).slice(0,20)};button.disabled=true;button.textContent="Saving…";const {error}=await db.from("site_settings").update({contact_settings:settings,updated_at:new Date().toISOString(),updated_by:adminUser.id}).eq("id","contact");button.disabled=false;button.textContent="Save Contact Settings";feedback.textContent=error?"Could not save settings. Verify admin access and try again.":"Contact settings saved successfully. The public website will load the latest details.";feedback.className=error?"feedback error":"feedback";});
+db.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"){adminUser=null;showLogin();}});
+verifySession();
+})();
