@@ -63,8 +63,34 @@ if ("IntersectionObserver" in window) {
     button.disabled=true;label.textContent="Submitting...";feedback.className="form-feedback";
     const {data,error}=await client.from("project_enquiries").insert({customer_name:values.customer_name,business_name:values.business_name||null,email:values.email,phone:values.phone,project_type:values.project_type,estimated_budget:values.estimated_budget||null,description:values.description,status:"new"});
     if(error){feedback.textContent="We couldn't submit your enquiry right now. Please try again in a moment or contact us directly.";feedback.className="form-feedback show error";button.disabled=false;label.textContent="Submit Project Enquiry";return;}
-    feedback.textContent="Thank you! Your project enquiry has been received. Our team will review it and get in touch with you soon.";feedback.className="form-feedback show success";form.reset();button.disabled=false;label.textContent="Submit Project Enquiry";
-    // Confirmation email is sent by the secure Edge Function once the email provider is configured.
-    try{await fetch(SUPABASE_URL+"/functions/v1/send-enquiry-confirmation",{method:"POST",headers:{"Content-Type":"application/json","apikey":SUPABASE_ANON_KEY},body:JSON.stringify({customer_name:values.customer_name,email:values.email,project_type:values.project_type})});}catch(_){}
+    feedback.textContent="Your enquiry has been saved. Sending confirmation emails...";feedback.className="form-feedback show success";
+    try {
+      const emailResponse = await fetch(SUPABASE_URL+"/functions/v1/send-enquiry-confirmation", {
+        method:"POST",
+        headers:{"Content-Type":"application/json","apikey":SUPABASE_ANON_KEY},
+        body:JSON.stringify({
+          customer_name:values.customer_name,
+          email:values.email,
+          phone:values.phone,
+          business_name:values.business_name,
+          project_type:values.project_type,
+          estimated_budget:values.estimated_budget,
+          description:values.description
+        })
+      });
+      const emailResult = await emailResponse.json().catch(()=>({}));
+      if(emailResponse.ok && emailResult.customer_email_sent && emailResult.admin_email_sent) {
+        feedback.textContent="Thank you! Your enquiry has been received. A confirmation email has been sent to you, and our team has been notified.";
+      } else {
+        feedback.textContent="Your enquiry has been saved successfully, but email notifications could not be sent just now. Our team will still review your request.";
+        feedback.className="form-feedback show error";
+        console.error("Enquiry email notification issue", emailResult);
+      }
+    } catch(error) {
+      feedback.textContent="Your enquiry has been saved successfully, but email notifications could not be sent just now. Our team will still review your request.";
+      feedback.className="form-feedback show error";
+      console.error("Enquiry email request failed", error);
+    }
+    form.reset();button.disabled=false;label.textContent="Submit Project Enquiry";
   });
 })();
