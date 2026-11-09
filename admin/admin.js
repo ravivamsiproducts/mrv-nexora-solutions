@@ -21,7 +21,7 @@ async function loadEnquiries(){
  $("enquiry-list").innerHTML='<p class="empty">Loading enquiries…</p>';
  const {data,error}=await db.from("project_enquiries").select("*").order("created_at",{ascending:false});
  if(error){$("enquiry-list").innerHTML='<p class="empty">Could not load enquiries. Please refresh or check admin permissions.</p>';return;}
- enquiries=data||[];renderFollowUps();$("total-count").textContent=enquiries.length;$("new-count").textContent=enquiries.filter(x=>x.status==="new").length;$("progress-count").textContent=enquiries.filter(x=>x.status==="in_progress").length;$("closed-count").textContent=enquiries.filter(x=>x.status==="closed").length;$("nav-count").textContent=enquiries.filter(x=>x.status==="new").length;renderEnquiries();
+ enquiries=data||[];renderFollowUps();$("total-count").textContent=enquiries.length;$("new-count").textContent=enquiries.filter(x=>x.status==="new").length;$("progress-count").textContent=enquiries.filter(x=>x.status==="in_progress").length;$("closed-count").textContent=enquiries.filter(x=>["completed","cancelled"].includes(x.status)).length;$("nav-count").textContent=enquiries.filter(x=>x.status==="new").length;renderEnquiries();
 }
 
 function renderFollowUps(){
