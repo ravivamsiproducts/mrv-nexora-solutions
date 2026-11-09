@@ -54,7 +54,7 @@ async function loadCommunicationHistory(id){
 $("save-follow-up").addEventListener("click",async()=>{
  if(!selected)return;const raw=$("follow-up-at").value;
  const follow_up_at=raw?new Date(raw).toISOString():null,lead_priority=$("lead-priority").value;
- const {error}=await db.from("project_enquiries").update({follow_up_at,lead_priority,updated_at:new Date().toISOString()}).eq("id",selected.id);
+ const {error}=await db.from("project_enquiries").update({follow_up_at,lead_priority,follow_up_notified_at:null,updated_at:new Date().toISOString()}).eq("id",selected.id);
  if(error){alert("Follow-up could not be saved. Check admin permissions.");return;}
  selected.follow_up_at=follow_up_at;selected.lead_priority=lead_priority;await loadEnquiries();alert("Follow-up details saved.");
 });
