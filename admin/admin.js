@@ -4,7 +4,7 @@ const KEY="sb_publishable_-M4jYj9CgTglX-IPOCfT-w_tedDSZFF";
 const db=window.supabase.createClient(URL,KEY);
 const $=id=>document.getElementById(id);
 let enquiries=[],selected=null,adminUser=null;
-const statuses=[["new","New"],["contacted","Contacted"],["in_progress","In Progress"],["quoted","Quoted"],["closed","Closed"]];
+const statuses=[["new","New"],["contacted","Contacted"],["quotation_sent","Quotation Sent"],["confirmed","Confirmed"],["in_progress","In Progress"],["completed","Completed"],["cancelled","Cancelled"]];
 const safe=(v)=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function showLogin(message=""){ $("login-view").hidden=false;$("dashboard-view").hidden=true;if(message){$("login-feedback").textContent=message;$("login-feedback").className="feedback error";}}
 function showDashboard(){ $("login-view").hidden=true;$("dashboard-view").hidden=false;$("admin-email").textContent=adminUser.email||"";loadEnquiries();loadSettings();}
@@ -21,8 +21,19 @@ async function loadEnquiries(){
  $("enquiry-list").innerHTML='<p class="empty">Loading enquiries…</p>';
  const {data,error}=await db.from("project_enquiries").select("*").order("created_at",{ascending:false});
  if(error){$("enquiry-list").innerHTML='<p class="empty">Could not load enquiries. Please refresh or check admin permissions.</p>';return;}
- enquiries=data||[];$("total-count").textContent=enquiries.length;$("new-count").textContent=enquiries.filter(x=>x.status==="new").length;$("progress-count").textContent=enquiries.filter(x=>x.status==="in_progress").length;$("closed-count").textContent=enquiries.filter(x=>x.status==="closed").length;$("nav-count").textContent=enquiries.filter(x=>x.status==="new").length;renderEnquiries();
+ enquiries=data||[];renderFollowUps();$("total-count").textContent=enquiries.length;$("new-count").textContent=enquiries.filter(x=>x.status==="new").length;$("progress-count").textContent=enquiries.filter(x=>x.status==="in_progress").length;$("closed-count").textContent=enquiries.filter(x=>x.status==="closed").length;$("nav-count").textContent=enquiries.filter(x=>x.status==="new").length;renderEnquiries();
 }
+
+function renderFollowUps(){
+ const now=Date.now();
+ const pending=enquiries.filter(x=>x.follow_up_at && !["completed","cancelled"].includes(x.status)).sort((a,b)=>new Date(a.follow_up_at)-new Date(b.follow_up_at));
+ $("followup-count").textContent=pending.filter(x=>new Date(x.follow_up_at).getTime()<=now).length;
+ const host=$("followup-list");
+ if(!pending.length){host.innerHTML='<p class="empty">No follow-ups scheduled. Open a lead to schedule one.</p>';return;}
+ host.innerHTML=pending.map(x=>{const due=new Date(x.follow_up_at),overdue=due.getTime()<now;return '<article class="followup-row"><div><strong>'+safe(x.customer_name)+'</strong><p>'+safe(x.project_type)+' · <span class="priority-'+safe(x.lead_priority||"medium")+'">'+safe((x.lead_priority||"medium").toUpperCase())+' PRIORITY</span></p><small>'+(overdue?'Overdue · ':'Due · ')+safe(due.toLocaleString())+'</small></div><button class="tiny-btn" data-followup-detail="'+x.id+'">Open Lead</button></article>';}).join("");
+ host.querySelectorAll("[data-followup-detail]").forEach(b=>b.addEventListener("click",()=>openDetails(b.dataset.followupDetail)));
+}
+
 function renderEnquiries(){
  const term=$("enquiry-search").value.toLowerCase(),filter=$("status-filter").value;
  const rows=enquiries.filter(x=>(!filter||x.status===filter)&&[x.customer_name,x.email,x.phone,x.project_type,x.business_name,x.package_name,x.package_country_code].some(v=>String(v||"").toLowerCase().includes(term)));
@@ -32,7 +43,30 @@ function renderEnquiries(){
  document.querySelectorAll("[data-details]").forEach(el=>el.addEventListener("click",()=>openDetails(el.dataset.details)));
 }
 async function updateStatus(id,status){const {error}=await db.from("project_enquiries").update({status,updated_at:new Date().toISOString()}).eq("id",id);if(error){alert("Status could not be updated. Check admin permissions.");return;}const item=enquiries.find(x=>x.id===id);if(item)item.status=status;loadEnquiries();}
-function openDetails(id){selected=enquiries.find(x=>x.id===id);if(!selected)return;$("detail-name").textContent=selected.customer_name;$("admin-notes").value=selected.admin_notes||"";const fields=[["Business",selected.business_name],["Email",selected.email],["Phone",selected.phone],["Service",selected.project_type],["Budget",selected.estimated_budget],["Selected Package",selected.package_name],["Package Country",selected.package_country_code],["Package Currency",selected.package_currency],["Package Price",selected.package_price!==null&&selected.package_price!==undefined?Number(selected.package_price).toLocaleString():""],["Submitted",new Date(selected.created_at).toLocaleString()],["Project Details",selected.description],["Required Features",selected.required_features],["Expected Timeline",selected.expected_timeline]];$("detail-content").innerHTML=fields.filter(f=>f[1]).map(f=>'<div><b>'+safe(f[0])+'</b>'+safe(f[1])+'</div>').join("");$("detail-whatsapp").onclick=()=>window.open("https://wa.me/"+String(selected.phone||"").replace(/\D/g,""),"_blank","noopener");$("detail-modal").hidden=false;}
+
+async function loadCommunicationHistory(id){
+ const host=$("communication-history");host.innerHTML='<p class="empty">Loading history…</p>';
+ const {data,error}=await db.from("enquiry_communications").select("*").eq("enquiry_id",id).order("created_at",{ascending:false});
+ if(error){host.innerHTML='<p class="empty">Could not load communication history.</p>';return;}
+ if(!data?.length){host.innerHTML='<p class="empty">No communication recorded yet.</p>';return;}
+ host.innerHTML=data.map(row=>'<article class="communication-item"><div><b>'+safe((row.channel||"note").replace("_"," ").toUpperCase())+'</b><small>'+safe(new Date(row.created_at).toLocaleString())+'</small></div><p>'+safe(row.message)+'</p></article>').join("");
+}
+$("save-follow-up").addEventListener("click",async()=>{
+ if(!selected)return;const raw=$("follow-up-at").value;
+ const follow_up_at=raw?new Date(raw).toISOString():null,lead_priority=$("lead-priority").value;
+ const {error}=await db.from("project_enquiries").update({follow_up_at,lead_priority,updated_at:new Date().toISOString()}).eq("id",selected.id);
+ if(error){alert("Follow-up could not be saved. Check admin permissions.");return;}
+ selected.follow_up_at=follow_up_at;selected.lead_priority=lead_priority;await loadEnquiries();alert("Follow-up details saved.");
+});
+$("add-communication").addEventListener("click",async()=>{
+ if(!selected)return;const message=$("communication-message").value.trim();
+ if(!message){alert("Enter a communication note first.");return;}
+ const {error}=await db.from("enquiry_communications").insert({enquiry_id:selected.id,channel:$("communication-channel").value,message,created_by:adminUser.id});
+ if(error){alert("Could not add communication history.");return;}
+ $("communication-message").value="";await loadCommunicationHistory(selected.id);
+});
+
+function openDetails(id){selected=enquiries.find(x=>x.id===id);if(!selected)return;$("detail-name").textContent=selected.customer_name;$("admin-notes").value=selected.admin_notes||"";const fields=[["Business",selected.business_name],["Email",selected.email],["Phone",selected.phone],["Service",selected.project_type],["Budget",selected.estimated_budget],["Selected Package",selected.package_name],["Package Country",selected.package_country_code],["Package Currency",selected.package_currency],["Package Price",selected.package_price!==null&&selected.package_price!==undefined?Number(selected.package_price).toLocaleString():""],["Submitted",new Date(selected.created_at).toLocaleString()],["Project Details",selected.description],["Required Features",selected.required_features],["Expected Timeline",selected.expected_timeline]];$("detail-content").innerHTML=fields.filter(f=>f[1]).map(f=>'<div><b>'+safe(f[0])+'</b>'+safe(f[1])+'</div>').join("");$("follow-up-at").value=selected.follow_up_at?new Date(new Date(selected.follow_up_at).getTime()-new Date(selected.follow_up_at).getTimezoneOffset()*60000).toISOString().slice(0,16):"";$("lead-priority").value=selected.lead_priority||"medium";loadCommunicationHistory(selected.id);$("detail-whatsapp").onclick=()=>window.open("https://wa.me/"+String(selected.phone||"").replace(/\D/g,""),"_blank","noopener");$("detail-modal").hidden=false;}
 $("modal-close").addEventListener("click",()=>$("detail-modal").hidden=true);
 $("detail-modal").addEventListener("click",e=>{if(e.target===$("detail-modal"))$("detail-modal").hidden=true;});
 $("save-notes").addEventListener("click",async()=>{if(!selected)return;const {error}=await db.from("project_enquiries").update({admin_notes:$("admin-notes").value,updated_at:new Date().toISOString()}).eq("id",selected.id);if(error){alert("Notes could not be saved.");return;}selected.admin_notes=$("admin-notes").value;alert("Admin notes saved.");});
