@@ -61,7 +61,7 @@ if ("IntersectionObserver" in window) {
     button.disabled=true;label.textContent="Submitting...";feedback.className="form-feedback";
     const packageContext = window.selectedPricingPackage || null;
     const enquiryPayload = {customer_name:values.customer_name,business_name:values.business_name||null,email:values.email,phone:values.phone,project_type:values.project_type,estimated_budget:values.estimated_budget||null,description:values.description,status:"new",package_name:packageContext?.package_name||null,package_country_code:packageContext?.country_code||null,package_currency:packageContext?.currency||null,package_price:packageContext?.price??null};
-    const {data,error}=await client.from("project_enquiries").insert(enquiryPayload).select("id").single();
+    const {data,error}=await client.from("project_enquiries").insert(enquiryPayload);
     if(error){feedback.textContent="We couldn't submit your enquiry right now. Please try again in a moment or contact us directly.";feedback.className="form-feedback show error";button.disabled=false;label.textContent="Submit Project Enquiry";return;}
     feedback.textContent="Your enquiry has been saved. Sending confirmation emails...";feedback.className="form-feedback show success";
     try {
