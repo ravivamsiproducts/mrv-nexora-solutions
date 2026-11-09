@@ -123,3 +123,12 @@
 @media(max-width:800px){.pricing-grid{gap:15px}.pricing-card{padding:22px 19px}.pricing-card>p{min-height:94px}}
 @media(max-width:560px){.pricing-grid{grid-template-columns:1fr;gap:14px}.pricing-card{padding:23px}.pricing-card h3{min-height:0}.pricing-card>p{min-height:0}.pricing-amount{font-size:30px}.pricing-features{gap:9px}.pricing-cta{margin-top:20px}}
 @media(prefers-reduced-motion:reduce){.pricing-card,.pricing-cta{transition:none}.pricing-card:hover,.pricing-cta:hover{transform:none}}
+
+
+/* Selected package context in project enquiry */
+.selected-package-summary{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 14px;margin:0 0 18px;padding:14px 16px;border:1px solid #cbdcf4;border-radius:10px;background:#f2f7ff;color:#18365f;font-size:12px}
+.selected-package-summary[hidden]{display:none}
+.selected-package-summary strong{font:800 12px Manrope,sans-serif}
+.selected-package-summary>span{color:#526985;font-size:11px}
+.selected-package-clear{border:0;background:transparent;color:#2862b7;font:700 11px "DM Sans",sans-serif;text-decoration:underline;cursor:pointer;padding:4px}
+@media(max-width:560px){.selected-package-summary{align-items:flex-start;flex-direction:column}}
