@@ -94,3 +94,84 @@ if ("IntersectionObserver" in window) {
     form.reset();button.disabled=false;label.textContent="Submit Project Enquiry";
   });
 })();
+
+/* MRV Nexora country-aware pricing */
+(() => {
+  const SUPABASE_URL = "https://pjrturqykjvplyrbvjte.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_-M4jYj9CgTglX-IPOCfT-w_tedDSZFF";
+  const grid = document.getElementById("pricing-grid");
+  const selector = document.getElementById("pricing-country");
+  if (!grid || !selector || !window.supabase) return;
+  const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const markets = {
+    IN:{name:"India",currency:"INR",locale:"en-IN"},
+    US:{name:"United States",currency:"USD",locale:"en-US"},
+    CA:{name:"Canada",currency:"CAD",locale:"en-CA"},
+    GB:{name:"United Kingdom",currency:"GBP",locale:"en-GB"}
+  };
+  let packages = [];
+  let prices = [];
+  let userChanged = false;
+  const safe = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  function formatAmount(amount, market) {
+    return new Intl.NumberFormat(market.locale,{style:"currency",currency:market.currency,maximumFractionDigits:2}).format(Number(amount));
+  }
+  function render() {
+    const code = selector.value;
+    const market = markets[code] || markets.IN;
+    const current = prices.filter(p => p.country_code === code);
+    const byPackage = new Map(current.map(p => [p.package_id,p]));
+    if (!packages.length) {
+      grid.innerHTML = '<p class="pricing-empty">Our pricing packages are being prepared. Tell us about your project and we will create a tailored proposal.</p>';
+      return;
+    }
+    grid.innerHTML = packages.map(pkg => {
+      const price = byPackage.get(pkg.id);
+      const custom = pkg.is_custom_quote || !price || price.amount === null;
+      const amount = custom ? "Let’s talk" : formatAmount(price.amount,market);
+      const features = Array.isArray(pkg.features) ? pkg.features : [];
+      return '<article class="pricing-card"><h3>'+safe(pkg.name)+'</h3><p>'+safe(pkg.description||"A solution tailored to your business goals.")+'</p><div class="pricing-amount">'+amount+'</div><div class="pricing-period">'+(custom?"Custom project proposal":safe(market.name+" · "+market.currency))+'</div><ul class="pricing-features">'+features.map(f=>'<li>'+safe(f)+'</li>').join("")+'</ul><a class="pricing-cta" href="#contact" data-package="'+safe(pkg.name)+'">Discuss this package ↗</a></article>';
+    }).join("");
+    grid.querySelectorAll("[data-package]").forEach(link => link.addEventListener("click",() => {
+      const service = document.getElementById("project-enquiry-form")?.elements?.project_type;
+      if (service) {
+        const options = [...service.options];
+        const match = options.find(o => o.value.toLowerCase().includes("website"));
+        if (match) service.value = match.value;
+      }
+    }));
+  }
+  async function loadPackages() {
+    grid.innerHTML = '<p class="pricing-empty">Loading packages…</p>';
+    const [pResult, priceResult] = await Promise.all([
+      db.from("pricing_packages").select("id,name,slug,service_type,description,features,is_custom_quote,display_order").eq("is_published",true).order("display_order",{ascending:true}),
+      db.from("pricing_package_prices").select("package_id,country_code,currency,amount").eq("is_available",true)
+    ]);
+    if (pResult.error || priceResult.error) {
+      console.error("Pricing could not load",pResult.error||priceResult.error);
+      grid.innerHTML = '<p class="pricing-empty">Pricing is temporarily unavailable. Please contact us for a quote.</p>';
+      return;
+    }
+    packages = pResult.data || [];
+    prices = priceResult.data || [];
+    render();
+  }
+  selector.addEventListener("change",() => {userChanged=true;render();const note=document.getElementById("pricing-country-note");if(note)note.textContent="Showing "+markets[selector.value].name+" prices. You can change this anytime.";});
+  async function detectCountry() {
+    try {
+      const response = await fetch("https://ipapi.co/json/",{headers:{Accept:"application/json"}});
+      if (!response.ok) throw new Error("Country lookup unavailable");
+      const data = await response.json();
+      const code = String(data.country_code||"").toUpperCase();
+      if (!userChanged && markets[code]) selector.value=code;
+      const note=document.getElementById("pricing-country-note");
+      if(note) note.textContent = "Country "+(markets[code]?.name || "not supported")+" detected approximately. Choose another market anytime.";
+    } catch (_) {
+      const note=document.getElementById("pricing-country-note");
+      if(note) note.textContent="Showing India prices by default. Choose your market anytime.";
+    }
+    render();
+  }
+  loadPackages();
+  detectCountry();
+})();
