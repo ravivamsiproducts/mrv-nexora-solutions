@@ -132,14 +132,6 @@ if ("IntersectionObserver" in window) {
       const features = Array.isArray(pkg.features) ? pkg.features : [];
       return '<article class="pricing-card"><h3>'+safe(pkg.name)+'</h3><p>'+safe(pkg.description||"A solution tailored to your business goals.")+'</p><div class="pricing-amount">'+amount+'</div><div class="pricing-period">'+(custom?"Custom project proposal":safe(market.name+" · "+market.currency))+'</div><ul class="pricing-features">'+features.map(f=>'<li>'+safe(f)+'</li>').join("")+'</ul><a class="pricing-cta" href="#contact" data-package="'+safe(pkg.name)+'">Discuss this package ↗</a></article>';
     }).join("");
-    grid.querySelectorAll("[data-package]").forEach(link => link.addEventListener("click",() => {
-      const service = document.getElementById("project-enquiry-form")?.elements?.project_type;
-      if (service) {
-        const options = [...service.options];
-        const match = options.find(o => o.value.toLowerCase().includes("website"));
-        if (match) service.value = match.value;
-      }
-    }));
   }
   async function loadPackages() {
     grid.innerHTML = '<p class="pricing-empty">Loading packages…</p>';
