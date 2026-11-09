@@ -125,12 +125,13 @@ if ("IntersectionObserver" in window) {
       grid.innerHTML = '<p class="pricing-empty">Our pricing packages are being prepared. Tell us about your project and we will create a tailored proposal.</p>';
       return;
     }
-    grid.innerHTML = packages.map(pkg => {
+    grid.innerHTML = packages.map((pkg,index) => {
       const price = byPackage.get(pkg.id);
       const custom = pkg.is_custom_quote || !price || price.amount === null;
       const amount = custom ? "Let’s talk" : formatAmount(price.amount,market);
       const features = Array.isArray(pkg.features) ? pkg.features : [];
-      return '<article class="pricing-card"><h3>'+safe(pkg.name)+'</h3><p>'+safe(pkg.description||"A solution tailored to your business goals.")+'</p><div class="pricing-amount">'+amount+'</div><div class="pricing-period">'+(custom?"Custom project proposal":safe(market.name+" · "+market.currency))+'</div><ul class="pricing-features">'+features.map(f=>'<li>'+safe(f)+'</li>').join("")+'</ul><a class="pricing-cta" href="#contact" data-package="'+safe(pkg.name)+'">Discuss this package ↗</a></article>';
+      const serviceType = safe(pkg.service_type || pkg.name);
+      return '<article class="pricing-card"><div class="pricing-card-top"><span class="pricing-kicker">PACKAGE '+String(index+1).padStart(2,"0")+'</span><span class="pricing-feature-count">'+features.length+' inclusions</span></div><h3>'+safe(pkg.name)+'</h3><p>'+safe(pkg.description||"A solution tailored to your business goals.")+'</p><div class="pricing-price-row"><div class="pricing-amount">'+amount+'</div><span class="pricing-period">'+(custom?"Custom proposal":safe(market.currency))+'</span></div><div class="pricing-market">'+safe(market.name)+'</div><ul class="pricing-features">'+features.map(f=>'<li>'+safe(f)+'</li>').join("")+'</ul><a class="pricing-cta" href="#contact" data-package="'+safe(pkg.name)+'" data-service="'+serviceType+'">Discuss this package <span aria-hidden="true">↗</span></a></article>';
     }).join("");
   }
   async function loadPackages() {
@@ -148,6 +149,17 @@ if ("IntersectionObserver" in window) {
     prices = priceResult.data || [];
     render();
   }
+  grid.addEventListener("click",(event) => {
+    const link = event.target.closest(".pricing-cta[data-service]");
+    if (!link) return;
+    const form = document.getElementById("project-enquiry-form");
+    const serviceField = form?.querySelector('[name="project_type"]');
+    if (serviceField) {
+      const desired = link.dataset.service;
+      const option = [...serviceField.options].find(item => item.value === desired || item.textContent.trim() === desired);
+      if (option) serviceField.value = option.value;
+    }
+  });
   selector.addEventListener("change",() => {userChanged=true;render();const note=document.getElementById("pricing-country-note");if(note)note.textContent="Showing "+markets[selector.value].name+" prices. You can change this anytime.";});
   async function detectCountry() {
     try {
