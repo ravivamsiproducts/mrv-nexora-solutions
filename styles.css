@@ -72,3 +72,25 @@
 .enquiry-panel{padding:34px 36px}.enquiry-heading{display:flex;justify-content:space-between;gap:10px;align-items:center;padding-bottom:22px;margin-bottom:22px;border-bottom:1px solid #e9eef6}.enquiry-heading span{font:800 14px Manrope;letter-spacing:1px;color:#142746}.enquiry-heading small{font-size:10px;color:#8190a6}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:17px 15px}.form-grid label{display:flex;flex-direction:column;gap:8px;font-size:11px;font-weight:700;color:#263752}.form-grid label>b{display:inline;color:#e15a63}.form-grid label>small{font-size:9px;font-weight:500;color:#8996a8}.form-grid input,.form-grid select,.form-grid textarea{width:100%;border:1px solid #dfe7f1;background:#fbfcfe;border-radius:5px;padding:12px 13px;font:400 12px "DM Sans",sans-serif;color:#192945;outline:none;transition:border .2s,box-shadow .2s}.form-grid input:focus,.form-grid select:focus,.form-grid textarea:focus{border-color:#4a83ef;box-shadow:0 0 0 3px #3678ef18}.form-grid textarea{resize:vertical;min-height:120px;line-height:1.6}.form-full{grid-column:1/-1}.form-grid .field-hint{font-weight:400;margin-top:-2px}.enquiry-submit{border:0;cursor:pointer;margin-top:22px;min-width:220px;justify-content:center}.enquiry-submit:disabled{opacity:.65;cursor:wait}.form-privacy{font-size:9px;color:#8996a8;margin:13px 0 0}.form-feedback{display:none;margin-top:15px;padding:12px 14px;border-radius:5px;font-size:11px;line-height:1.6}.form-feedback.show{display:block}.form-feedback.success{background:#eaf8f1;color:#176b45}.form-feedback.error{background:#fff0f0;color:#a73535}
 @media(max-width:800px){.contact-layout{grid-template-columns:1fr}.contact-callout{padding:34px}.contact-callout-mark{font-size:42px}}
 @media(max-width:560px){.contact-section{padding-top:65px}.contact-callout{padding:29px 23px}.contact-callout-mark{display:none}.contact-info-panel,.enquiry-panel{padding:25px 21px}.contact-info-panel h3{font-size:29px}.enquiry-heading{align-items:flex-start;flex-direction:column;gap:6px}.form-grid{grid-template-columns:1fr}.form-full{grid-column:auto}.enquiry-submit{width:100%}}
+
+/* International country-based pricing */
+.pricing-section{background:#f4f7fc}
+.pricing-heading{align-items:flex-end}
+.pricing-controls{display:grid;gap:8px;min-width:min(300px,100%)}
+.pricing-controls label{font:700 11px Manrope;color:#223553}
+.pricing-controls select{border:1px solid #d8e2f0;background:#fff;border-radius:7px;padding:13px 14px;color:#14213a;font:600 13px "DM Sans",sans-serif}
+.pricing-controls small{font-size:10px;line-height:1.5;color:#718096}
+.pricing-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:35px}
+.pricing-card{display:flex;flex-direction:column;background:#fff;border:1px solid #e0e8f3;border-radius:11px;padding:27px;box-shadow:0 14px 35px #102d5908}
+.pricing-card h3{font:800 20px Manrope;margin:0 0 9px;color:#132847}
+.pricing-card>p{font-size:12px;line-height:1.7;color:#718096;min-height:60px;margin:0 0 20px}
+.pricing-amount{font:800 34px Manrope;letter-spacing:-1.2px;color:#1e5fd7;margin:0 0 5px}
+.pricing-period{font-size:10px;color:#8996a8;margin-bottom:21px}
+.pricing-features{list-style:none;padding:18px 0 0;margin:0;border-top:1px solid #edf1f7;display:grid;gap:11px;flex:1}
+.pricing-features li{font-size:11px;line-height:1.5;color:#43536b}
+.pricing-features li:before{content:"✓";color:#0c9c80;font-weight:800;margin-right:9px}
+.pricing-cta{display:inline-flex;justify-content:center;margin-top:24px;padding:13px 16px;border-radius:6px;background:#0d2851;color:#fff;font:700 11px Manrope}
+.pricing-empty{grid-column:1/-1;text-align:center;padding:42px 20px;background:#fff;border:1px dashed #cbd7e7;border-radius:10px;color:#718096;font-size:13px}
+.pricing-disclaimer{font-size:10px;line-height:1.6;color:#8996a8;margin:20px 0 0}
+@media(max-width:800px){.pricing-grid{grid-template-columns:1fr 1fr}.pricing-heading{align-items:flex-start;flex-direction:column}.pricing-controls{width:100%}}
+@media(max-width:560px){.pricing-grid{grid-template-columns:1fr}.pricing-card{padding:23px}.pricing-card>p{min-height:unset}}
