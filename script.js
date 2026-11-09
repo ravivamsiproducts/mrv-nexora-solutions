@@ -50,8 +50,6 @@ if ("IntersectionObserver" in window) {
     setText("contact-location", s.location); setText("contact-availability", s.service_availability); setText("contact-hours", s.business_hours);
     const social = document.getElementById("contact-social-links");
     if(social){social.replaceChildren();const labels={instagram:"Instagram",linkedin:"LinkedIn",facebook:"Facebook",youtube:"YouTube"};let count=0;Object.entries(s.social_links||{}).forEach(([key,url])=>{if(!url)return;try{const parsed=new URL(url);if(!["https:","http:"].includes(parsed.protocol))return;const a=document.createElement("a");a.href=parsed.href;a.target="_blank";a.rel="noopener";a.textContent=labels[key]||key;social.append(a);count++;}catch{}});if(!count){const span=document.createElement("span");span.textContent="Social links will be updated soon.";social.append(span);}}
-    const budget = document.getElementById("budget-options");
-    if(budget && Array.isArray(s.budget_ranges) && s.budget_ranges.length){const keep=budget.options[0];budget.replaceChildren(keep);s.budget_ranges.forEach(v=>{const o=document.createElement("option");o.value=v;o.textContent=v;budget.append(o);});const other=document.createElement("option");other.value="Not sure yet – Let's discuss";other.textContent="Not sure yet – Let's discuss";budget.append(other);}
   }
   loadContactSettings();
   const form=document.getElementById("project-enquiry-form"); if(!form)return;
@@ -109,6 +107,32 @@ if ("IntersectionObserver" in window) {
     CA:{name:"Canada",currency:"CAD",locale:"en-CA"},
     GB:{name:"United Kingdom",currency:"GBP",locale:"en-GB"}
   };
+  const budgetOptions = {
+    IN:["Below ₹15,000","₹15,000 – ₹30,000","₹30,001 – ₹50,000","₹50,001 – ₹1,00,000","Above ₹1,00,000"],
+    US:["Below $499","$499 – $999","$1,000 – $1,999","$2,000 – $3,499","Above $3,499"],
+    CA:["Below C$699","C$699 – C$1,199","C$1,200 – C$1,999","C$2,000 – C$3,299","Above C$3,299"],
+    GB:["Below £399","£399 – £699","£700 – £1,199","£1,200 – £1,999","Above £1,999"]
+  };
+  function updateBudgetOptions() {
+    const budget = document.getElementById("budget-options");
+    if (!budget) return;
+    const code = selector.value;
+    const options = budgetOptions[code] || budgetOptions.IN;
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = "Select an approximate budget";
+    const notSure = document.createElement("option");
+    notSure.value = "Not sure yet – Let's discuss";
+    notSure.textContent = "Not sure yet – Let's discuss";
+    budget.replaceChildren(placeholder);
+    options.forEach(label => {
+      const option = document.createElement("option");
+      option.value = label;
+      option.textContent = label;
+      budget.append(option);
+    });
+    budget.append(notSure);
+  }
   let packages = [];
   let prices = [];
   let userChanged = false;
@@ -160,7 +184,7 @@ if ("IntersectionObserver" in window) {
       if (option) serviceField.value = option.value;
     }
   });
-  selector.addEventListener("change",() => {userChanged=true;render();const note=document.getElementById("pricing-country-note");if(note)note.textContent="Showing "+markets[selector.value].name+" prices. You can change this anytime.";});
+  selector.addEventListener("change",() => {userChanged=true;render();updateBudgetOptions();const note=document.getElementById("pricing-country-note");if(note)note.textContent="Showing "+markets[selector.value].name+" prices. You can change this anytime.";});
   async function detectCountry() {
     try {
       const response = await fetch("https://ipapi.co/json/",{headers:{Accept:"application/json"}});
@@ -175,7 +199,9 @@ if ("IntersectionObserver" in window) {
       if(note) note.textContent="Showing India prices by default. Choose your market anytime.";
     }
     render();
+    updateBudgetOptions();
   }
+  updateBudgetOptions();
   loadPackages();
   detectCountry();
 })();
