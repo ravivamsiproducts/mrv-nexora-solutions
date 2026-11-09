@@ -41,7 +41,6 @@ async function loadSettings(){const {data,error}=await db.from("site_settings").
 $("settings-form").addEventListener("submit",async e=>{e.preventDefault();const form=e.currentTarget,fd=new FormData(form),feedback=$("settings-feedback"),button=form.querySelector("button[type=submit]");const cleanUrl=v=>{v=String(v||"").trim();if(!v)return "";try{const u=new URL(v);return ["https:","http:"].includes(u.protocol)?u.href:"";}catch{return "";}};const settings={business_email:String(fd.get("business_email")||"").trim(),contact_number:String(fd.get("contact_number")||"").trim(),whatsapp_number:String(fd.get("whatsapp_number")||"").trim(),location:String(fd.get("location")||"").trim(),service_availability:String(fd.get("service_availability")||"").trim(),business_hours:String(fd.get("business_hours")||"").trim(),social_links:{instagram:cleanUrl(fd.get("instagram")),linkedin:cleanUrl(fd.get("linkedin")),facebook:cleanUrl(fd.get("facebook")),youtube:cleanUrl(fd.get("youtube"))},budget_ranges:String(fd.get("budget_ranges")||"").split("\n").map(x=>x.trim()).filter(Boolean).slice(0,20)};button.disabled=true;button.textContent="Saving…";const {error}=await db.from("site_settings").update({contact_settings:settings,updated_at:new Date().toISOString(),updated_by:adminUser.id}).eq("id","contact");button.disabled=false;button.textContent="Save Contact Settings";feedback.textContent=error?"Could not save settings. Verify admin access and try again.":"Contact settings saved successfully. The public website will load the latest details.";feedback.className=error?"feedback error":"feedback";});
 db.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"){adminUser=null;showLogin();}});
 verifySession();
-})();
 /* International pricing package management */
 const marketConfig={
  IN:{country_name:"India",currency:"INR"},
@@ -119,3 +118,4 @@ $("pricing-form").addEventListener("submit",async e=>{
 });
 $("pricing-reset").addEventListener("click",resetPricingForm);
 $("pricing-refresh").addEventListener("click",loadPricingPackages);
+})();
