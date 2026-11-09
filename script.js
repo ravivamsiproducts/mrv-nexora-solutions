@@ -209,7 +209,14 @@ if ("IntersectionObserver" in window) {
       });
     }
   });
-  selector.addEventListener("change",() => {userChanged=true;render();updateBudgetOptions();const note=document.getElementById("pricing-country-note");if(note)note.textContent="Showing "+markets[selector.value].name+" prices. You can change this anytime.";});
+  selector.addEventListener("change",() => {
+    userChanged=true;render();updateBudgetOptions();
+    window.selectedPricingPackage = null;
+    const summary = document.getElementById("selected-package-summary");
+    if (summary) { summary.hidden = true; summary.textContent = ""; }
+    const note=document.getElementById("pricing-country-note");
+    if(note)note.textContent="Showing "+markets[selector.value].name+" prices. You can change this anytime. Select a package again to attach it to your enquiry.";
+  });
   async function detectCountry() {
     try {
       const response = await fetch("https://ipapi.co/json/",{headers:{Accept:"application/json"}});
