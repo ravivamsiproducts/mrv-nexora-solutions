@@ -16,7 +16,7 @@ async function verifySession(){
 }
 $("login-form").addEventListener("submit",async e=>{e.preventDefault();const f=new FormData(e.currentTarget);const b=e.currentTarget.querySelector("button");b.disabled=true;b.textContent="Signing in…";const {data,error}=await db.auth.signInWithPassword({email:f.get("email"),password:f.get("password")});b.disabled=false;b.textContent="Sign in to dashboard";if(error){showLogin("Sign-in failed. Check your email and password.");return;}adminUser=data.user;if(String(data.user.app_metadata?.role||"")!=="admin"){await db.auth.signOut();showLogin("Signed in, but this account is not assigned the admin role.");return;}showDashboard();});
 $("logout-button").addEventListener("click",async()=>{await db.auth.signOut();adminUser=null;showLogin();});
-document.querySelectorAll(".side-link").forEach(btn=>btn.addEventListener("click",()=>{document.querySelectorAll(".side-link").forEach(x=>x.classList.toggle("active",x===btn));const settings=btn.dataset.view==="settings";$("enquiries-view").hidden=settings;$("settings-view").hidden=!settings;$("page-title").textContent=settings?"Contact Settings":"Project Enquiries";}));
+document.querySelectorAll(".side-link").forEach(btn=>btn.addEventListener("click",()=>{document.querySelectorAll(".side-link").forEach(x=>x.classList.toggle("active",x===btn));const view=btn.dataset.view;$("enquiries-view").hidden=view!=="enquiries";$("pricing-view").hidden=view!=="pricing";$("settings-view").hidden=view!=="settings";$("page-title").textContent=view==="settings"?"Contact Settings":view==="pricing"?"Pricing Management":"Project Enquiries";if(view==="pricing")loadPricingPackages();}));
 async function loadEnquiries(){
  $("enquiry-list").innerHTML='<p class="empty">Loading enquiries…</p>';
  const {data,error}=await db.from("project_enquiries").select("*").order("created_at",{ascending:false});
@@ -42,3 +42,80 @@ $("settings-form").addEventListener("submit",async e=>{e.preventDefault();const 
 db.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"){adminUser=null;showLogin();}});
 verifySession();
 })();
+/* International pricing package management */
+const marketConfig={
+ IN:{country_name:"India",currency:"INR"},
+ US:{country_name:"United States",currency:"USD"},
+ CA:{country_name:"Canada",currency:"CAD"},
+ GB:{country_name:"United Kingdom",currency:"GBP"}
+};
+let pricingPackages=[];
+async function loadPricingPackages(){
+ $("admin-pricing-list").innerHTML='<p class="empty">Loading packages…</p>';
+ const {data,error}=await db.from("pricing_packages").select("*").order("display_order",{ascending:true});
+ if(error){$("admin-pricing-list").innerHTML='<p class="empty">Could not load packages. Check pricing table permissions.</p>';return;}
+ pricingPackages=data||[];
+ const {data:priceRows,error:priceError}=await db.from("pricing_package_prices").select("*");
+ if(priceError){$("admin-pricing-list").innerHTML='<p class="empty">Could not load country prices. Check pricing permissions.</p>';return;}
+ pricingPackages.forEach(pkg=>pkg.marketPrices=(priceRows||[]).filter(p=>p.package_id===pkg.id));
+ renderPricingPackages();
+}
+function renderPricingPackages(){
+ const host=$("admin-pricing-list");
+ if(!pricingPackages.length){host.innerHTML='<p class="empty">No packages yet. Create your first package above.</p>';return;}
+ host.innerHTML=pricingPackages.map(pkg=>{
+  const priceSummary=(pkg.marketPrices||[]).map(p=>marketConfig[p.country_code].currency+" "+Number(p.amount||0).toLocaleString()).join(" · ");
+  return '<article class="admin-package-row"><div><h3>'+safe(pkg.name)+' '+(pkg.is_published?'<span class="status-tag">Published</span>':'<span class="status-tag">Draft</span>')+'</h3><p>'+safe(pkg.slug)+' · '+safe(pkg.service_type||"General")+'<br>'+safe(priceSummary|| (pkg.is_custom_quote?"Custom quote only":"No market prices set"))+'</p></div><div class="admin-package-actions"><button class="edit" type="button" data-edit-package="'+pkg.id+'">Edit</button><button class="delete" type="button" data-delete-package="'+pkg.id+'">Delete</button></div></article>';
+ }).join("");
+ host.querySelectorAll("[data-edit-package]").forEach(b=>b.addEventListener("click",()=>editPricingPackage(b.dataset.editPackage)));
+ host.querySelectorAll("[data-delete-package]").forEach(b=>b.addEventListener("click",()=>deletePricingPackage(b.dataset.deletePackage)));
+}
+function resetPricingForm(){
+ const form=$("pricing-form");form.reset();form.elements.id.value="";form.elements.display_order.value="1";
+ $("pricing-feedback").textContent="";form.querySelector('button[type="submit"]').textContent="Save Package";
+}
+async function editPricingPackage(id){
+ const pkg=pricingPackages.find(p=>p.id===id);if(!pkg)return;
+ const form=$("pricing-form");form.elements.id.value=pkg.id;form.elements.name.value=pkg.name||"";form.elements.slug.value=pkg.slug||"";form.elements.service_type.value=pkg.service_type||"";form.elements.display_order.value=pkg.display_order||0;form.elements.description.value=pkg.description||"";form.elements.features.value=Array.isArray(pkg.features)?pkg.features.join("\n"):"";form.elements.is_custom_quote.checked=!!pkg.is_custom_quote;form.elements.is_published.checked=!!pkg.is_published;
+ ["IN","US","CA","GB"].forEach(code=>{const row=(pkg.marketPrices||[]).find(p=>p.country_code===code);form.elements["price_"+code].value=row?.amount??"";});
+ form.querySelector('button[type="submit"]').textContent="Update Package";
+ form.scrollIntoView({behavior:"smooth",block:"start"});
+}
+async function deletePricingPackage(id){
+ const pkg=pricingPackages.find(p=>p.id===id);if(!pkg||!confirm("Delete "+pkg.name+" and all its country prices?"))return;
+ const {error}=await db.from("pricing_packages").delete().eq("id",id);
+ if(error){alert("Package could not be deleted. Check admin permissions.");return;}
+ await loadPricingPackages();resetPricingForm();
+}
+$("pricing-form").addEventListener("submit",async e=>{
+ e.preventDefault();const form=e.currentTarget,fd=new FormData(form),feedback=$("pricing-feedback"),button=form.querySelector('button[type="submit"]');
+ const name=String(fd.get("name")||"").trim(),slug=String(fd.get("slug")||"").trim().toLowerCase().replace(/[^a-z0-9-]+/g,"-").replace(/^-|-$/g,"");
+ if(!name||!slug){feedback.textContent="Package name and URL slug are required.";feedback.className="feedback error";return;}
+ const payload={name,slug,service_type:String(fd.get("service_type")||"").trim()||null,description:String(fd.get("description")||"").trim()||null,features:String(fd.get("features")||"").split("\n").map(x=>x.trim()).filter(Boolean).slice(0,30),price:null,currency:"INR",is_custom_quote:form.elements.is_custom_quote.checked,is_published:form.elements.is_published.checked,display_order:Number(fd.get("display_order")||0),updated_at:new Date().toISOString()};
+ button.disabled=true;button.textContent="Saving…";
+ let packageId=form.elements.id.value;
+ let result;
+ if(packageId) result=await db.from("pricing_packages").update(payload).eq("id",packageId).select("id").single();
+ else result=await db.from("pricing_packages").insert(payload).select("id").single();
+ if(result.error){button.disabled=false;button.textContent=packageId?"Update Package":"Save Package";feedback.textContent="Could not save package. Check that the URL slug is unique and admin access is active.";feedback.className="feedback error";return;}
+ packageId=result.data.id;
+ let priceError=null;
+ for(const code of ["IN","US","CA","GB"]){
+  const raw=String(fd.get("price_"+code)||"").trim();
+  if(raw===""){
+   const removed=await db.from("pricing_package_prices").delete().eq("package_id",packageId).eq("country_code",code);
+   if(removed.error)priceError=removed.error;
+  }else{
+   const amount=Number(raw);
+   if(!Number.isFinite(amount)||amount<0){priceError=new Error("Invalid price");break;}
+   const saved=await db.from("pricing_package_prices").upsert({package_id:packageId,country_code:code,country_name:marketConfig[code].country_name,currency:marketConfig[code].currency,amount,is_available:true,updated_at:new Date().toISOString()},{onConflict:"package_id,country_code"});
+   if(saved.error)priceError=saved.error;
+  }
+ }
+ button.disabled=false;button.textContent=packageId?"Update Package":"Save Package";
+ if(priceError){feedback.textContent="Package saved, but one or more market prices did not save. Please edit and retry.";feedback.className="feedback error";console.error(priceError);}
+ else {feedback.textContent="Package and country prices saved successfully.";feedback.className="feedback";resetPricingForm();}
+ await loadPricingPackages();
+});
+$("pricing-reset").addEventListener("click",resetPricingForm);
+$("pricing-refresh").addEventListener("click",loadPricingPackages);
