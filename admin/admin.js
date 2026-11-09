@@ -88,16 +88,16 @@ async function deletePricingPackage(id){
  await loadPricingPackages();resetPricingForm();
 }
 $("pricing-form").addEventListener("submit",async e=>{
- e.preventDefault();const form=e.currentTarget,fd=new FormData(form),feedback=$("pricing-feedback"),button=form.querySelector('button[type="submit"]');
+ e.preventDefault();e.stopPropagation();const form=e.currentTarget,fd=new FormData(form),feedback=$("pricing-feedback"),button=form.querySelector('button[type="submit"]');
  const name=String(fd.get("name")||"").trim(),slug=String(fd.get("slug")||"").trim().toLowerCase().replace(/[^a-z0-9-]+/g,"-").replace(/^-|-$/g,"");
  if(!name||!slug){feedback.textContent="Package name and URL slug are required.";feedback.className="feedback error";return;}
  const payload={name,slug,service_type:String(fd.get("service_type")||"").trim()||null,description:String(fd.get("description")||"").trim()||null,features:String(fd.get("features")||"").split("\n").map(x=>x.trim()).filter(Boolean).slice(0,30),price:null,currency:"INR",is_custom_quote:form.elements.is_custom_quote.checked,is_published:form.elements.is_published.checked,display_order:Number(fd.get("display_order")||0),updated_at:new Date().toISOString()};
  button.disabled=true;button.textContent="Saving…";
- let packageId=form.elements.id.value;
+ let packageId=form.elements.namedItem("id").value;
  let result;
  if(packageId) result=await db.from("pricing_packages").update(payload).eq("id",packageId).select("id").single();
  else result=await db.from("pricing_packages").insert(payload).select("id").single();
- if(result.error){button.disabled=false;button.textContent=packageId?"Update Package":"Save Package";feedback.textContent="Could not save package. Check that the URL slug is unique and admin access is active.";feedback.className="feedback error";return;}
+ if(result.error){button.disabled=false;button.textContent=packageId?"Update Package":"Save Package";feedback.textContent="Package save failed: "+(result.error.message||"Please check permissions and required fields.");feedback.className="feedback error";console.error("Pricing package save failed",result.error);return;}
  packageId=result.data.id;
  let priceError=null;
  for(const code of ["IN","US","CA","GB"]){
@@ -113,7 +113,7 @@ $("pricing-form").addEventListener("submit",async e=>{
   }
  }
  button.disabled=false;button.textContent=packageId?"Update Package":"Save Package";
- if(priceError){feedback.textContent="Package saved, but one or more market prices did not save. Please edit and retry.";feedback.className="feedback error";console.error(priceError);}
+ if(priceError){feedback.textContent="Package saved, but a country price failed: "+(priceError.message||"Please edit and retry.");feedback.className="feedback error";console.error("Country price save failed",priceError);}
  else {feedback.textContent="Package and country prices saved successfully.";feedback.className="feedback";resetPricingForm();}
  await loadPricingPackages();
 });
