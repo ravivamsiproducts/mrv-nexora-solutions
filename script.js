@@ -157,7 +157,7 @@ if ("IntersectionObserver" in window) {
       const code = String(data.country_code||"").toUpperCase();
       if (!userChanged && markets[code]) selector.value=code;
       const note=document.getElementById("pricing-country-note");
-      if(note) note.textContent = "Country "+(markets[code]?.name || "not supported")+" detected approximately. Choose another market anytime.";
+      if(note) note.textContent = "Country "+(markets[code]?.name || "not supported")+" estimated from your IP address (not GPS). Choose another market anytime.";
     } catch (_) {
       const note=document.getElementById("pricing-country-note");
       if(note) note.textContent="Showing India prices by default. Choose your market anytime.";
