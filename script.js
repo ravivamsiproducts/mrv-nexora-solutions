@@ -195,6 +195,15 @@ if ("IntersectionObserver" in window) {
     }
     const custom = link.dataset.custom === "true";
     const price = link.dataset.price === "" ? null : Number(link.dataset.price);
+    const budgetField = form?.querySelector('[name="estimated_budget"]');
+    if (budgetField && price !== null) {
+      const limits = {IN:[15000,30000,50000,100000],US:[499,999,1999,3499],CA:[699,1199,1999,3299],GB:[399,699,1199,1999]};
+      const thresholds = limits[link.dataset.country] || limits.IN;
+      const tier = thresholds.findIndex(limit => price < limit);
+      budgetField.value = budgetOptions[link.dataset.country]?.[tier < 0 ? thresholds.length : tier] || "";
+    } else if (budgetField) {
+      budgetField.value = "Not sure yet – Let's discuss";
+    }
     window.selectedPricingPackage = {
       package_id:link.dataset.packageId, package_name:link.dataset.package,
       country_code:link.dataset.country, country_name:link.dataset.countryName,
