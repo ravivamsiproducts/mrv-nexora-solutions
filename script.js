@@ -61,13 +61,16 @@ if ("IntersectionObserver" in window) {
   const openEnquiry=()=>{if(!enquiryDialog||!enquiryPanel)return;enquirySlot.append(enquiryPanel);if(typeof enquiryDialog.showModal==="function")enquiryDialog.showModal();else enquiryDialog.setAttribute("open","");};
   const closeEnquiry=()=>{if(!enquiryDialog||!enquiryPanel)return;if(enquiryDialog.open&&typeof enquiryDialog.close==="function")enquiryDialog.close();else enquiryDialog.removeAttribute("open");if(enquiryHome){if(enquiryHomeNext&&enquiryHomeNext.parentElement===enquiryHome)enquiryHome.insertBefore(enquiryPanel,enquiryHomeNext);else enquiryHome.append(enquiryPanel);}};
   document.getElementById("hero-enquiry-open")?.addEventListener("click",event=>{event.preventDefault();if(form.elements.project_type)form.elements.project_type.value="";openEnquiry();});
-  const serviceParam=new URLSearchParams(window.location.search).get("service");
-  const openParam=new URLSearchParams(window.location.search).get("openEnquiry");
-  if(serviceParam&&openParam==="1"){
+  const enquiryParams=new URLSearchParams(window.location.search);
+  const serviceParam=enquiryParams.get("service");
+  if(serviceParam&&enquiryParams.get("openEnquiry")==="1"){
     const serviceSelect=form.elements.project_type;
-    if(serviceSelect){const match=[...serviceSelect.options].find(option=>option.value.toLowerCase()===serviceParam.toLowerCase()||option.textContent.trim().toLowerCase()===serviceParam.toLowerCase());if(match)serviceSelect.value=match.value;}
-    openEnquiry();
-    window.history.replaceState({},document.title,window.location.pathname+"#home");
+    const match=serviceSelect&&[...serviceSelect.options].find(option=>option.value.toLowerCase()===serviceParam.trim().toLowerCase()||option.textContent.trim().toLowerCase()===serviceParam.trim().toLowerCase());
+    if(match){
+      serviceSelect.value=match.value;
+      openEnquiry();
+      window.history.replaceState({},document.title,window.location.pathname+"#home");
+    }
   }
   document.getElementById("project-enquiry-close")?.addEventListener("click",closeEnquiry);
   enquiryDialog?.addEventListener("click",event=>{if(event.target===enquiryDialog)closeEnquiry();});
