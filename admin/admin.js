@@ -245,7 +245,7 @@ $("feature-send-email").addEventListener("click",async()=>{
  if(!pkg){feedback.textContent="Please choose a package.";feedback.className="feedback error";return;}
  if(!email||!/^\S+@\S+\.\S+$/.test(email)){feedback.textContent="Enter a valid client email address.";feedback.className="feedback error";return;}
  btn.disabled=true;btn.textContent="Sending…";feedback.textContent="";
- const {data,error}=await db.functions.invoke("send-package-breakdown",{body:{package_id:pkg.id,country_code:country,recipient_email:email,recipient_name:name,enquiry_id:leadId||null}});
+ const {data,error}=await db.functions.invoke("send-package-breakdown",{body:{package_id:pkg.id,country_code:country,recipient_email:email,recipient_name:name,enquiry_id:leadId||null,include_input_requirements:true}});
  btn.disabled=false;btn.textContent="✉ Send to Email";
  if(error){feedback.textContent="Email could not be sent: "+(error.message||"Please try again.");feedback.className="feedback error";return;}
  if(leadId)await db.from("enquiry_communications").insert({enquiry_id:leadId,channel:"email",message:"Package feature breakdown emailed to "+email+" for "+pkg.name+" ("+country+").",created_by:adminUser.id});
