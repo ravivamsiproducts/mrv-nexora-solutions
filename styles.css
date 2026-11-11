@@ -132,3 +132,28 @@
 .selected-package-summary>span{color:#526985;font-size:11px}
 .selected-package-clear{border:0;background:transparent;color:#2862b7;font:700 11px "DM Sans",sans-serif;text-decoration:underline;cursor:pointer;padding:4px}
 @media(max-width:560px){.selected-package-summary{align-items:flex-start;flex-direction:column}}
+
+
+/* Domain, setup choices and optional website care */
+.service-options-section{background:#fff}
+.service-options-grid,.care-plans-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:30px}
+.service-option-card,.care-plan-card{display:flex;flex-direction:column;min-width:0;padding:26px;border:1px solid #dfe7f2;border-radius:13px;background:#fff;box-shadow:0 12px 32px rgba(12,38,77,.045)}
+.service-option-featured{border-color:#83a9e6;box-shadow:0 16px 38px rgba(25,86,170,.10)}
+.service-option-label{font:800 9px Manrope,sans-serif;letter-spacing:1.35px;color:#3972c8}
+.service-option-card h3,.care-plan-card h3{font:800 19px/1.35 Manrope,sans-serif;color:#142746;margin:12px 0 9px}
+.service-option-card>p,.care-plan-card>p{font-size:11.5px;line-height:1.75;color:#718096;margin:0 0 15px;min-height:62px}
+.service-option-card ul,.care-plan-card ul{list-style:none;padding:16px 0 0;margin:0;border-top:1px solid #edf1f7;display:grid;gap:11px;flex:1}
+.service-option-card li,.care-plan-card li{font-size:11px;line-height:1.55;color:#43536b}
+.service-option-card li:before,.care-plan-card li:before{content:"✓";font-weight:800;color:#0c9c80;margin-right:9px}
+.service-option-link{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:22px;padding:13px 15px;border-radius:7px;background:#0d2851;color:#fff;font:700 11px Manrope,sans-serif}
+.service-option-link:hover{background:#174b91}
+.domain-ownership-note{margin-top:22px;padding:19px 21px;border:1px solid #dce8f7;border-radius:9px;background:#f4f8fe;color:#526985;font-size:11px;line-height:1.8}
+.domain-ownership-note strong{color:#18365f}
+.care-plans-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:25px;margin-top:76px}
+.care-plans-heading h2{font:800 clamp(27px,3vw,38px)/1.15 Manrope,sans-serif;letter-spacing:-1.1px;margin:0;color:#142746}
+.care-plans-heading h2 span{color:#2865e6}
+.care-plans-heading>p{max-width:390px;font-size:12px;line-height:1.8;color:#718096;margin:0}
+.care-plan-card{background:#fdfefe}
+.care-plan-disclaimer{font-size:10px;line-height:1.7;color:#8794a7;margin:18px 0 0}
+@media(max-width:800px){.service-options-grid,.care-plans-grid{grid-template-columns:1fr 1fr}.care-plans-heading{align-items:flex-start;flex-direction:column}}
+@media(max-width:560px){.service-options-grid,.care-plans-grid{grid-template-columns:1fr}.service-option-card,.care-plan-card{padding:23px}.service-option-card>p,.care-plan-card>p{min-height:0}.care-plans-heading{margin-top:55px}}
