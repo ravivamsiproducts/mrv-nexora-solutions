@@ -68,6 +68,7 @@ $("add-communication").addEventListener("click",async()=>{
 
 
 async function sendPackageBreakdown(){
+ if(!featurePackages.length)await loadFeaturePackages();
  if(!selected?.email){alert("This lead does not have a valid email address.");return;}
  const names=featurePackages.map((p,i)=>(i+1)+". "+p.name).join("\n");
  let pkg=featurePackages.find(p=>p.name===selected.package_name);
