@@ -102,6 +102,79 @@ const marketConfig={
  GB:{country_name:"United Kingdom",currency:"GBP"}
 };
 
+
+// Client input requirement templates and per-lead tracking
+const inputStatusLabels={pending:"Pending",requested:"Requested",received:"Received",not_required:"Not Required"};
+async function loadInputRequirementTemplates(){
+ const packageId=$("feature-package-select").value,host=$("input-requirement-template-list");
+ if(!packageId){host.innerHTML='<p class="empty">Select a package to manage its input checklist.</p>';return;}
+ host.innerHTML='<p class="empty">Loading requirements…</p>';
+ const {data,error}=await db.from("package_input_requirements").select("*").eq("package_id",packageId).order("display_order");
+ if(error){host.innerHTML='<p class="empty">Could not load input requirements: '+safe(error.message)+'</p>';return;}
+ if(!data?.length){host.innerHTML='<p class="empty">No input requirements yet. Add the minimum information clients must provide.</p>';return;}
+ host.innerHTML=data.map((r,i)=>'<article class="input-template-row" data-input-template="'+r.id+'"><div class="input-template-fields"><label>Input / Document<input data-input-field="requirement_name" value="'+safe(r.requirement_name)+'" maxlength="160"></label><label>What client should provide<textarea data-input-field="description" rows="2" maxlength="1200">'+safe(r.description||"")+'</textarea></label></div><div class="input-template-actions"><label class="feature-active"><input data-input-field="is_required" type="checkbox" '+(r.is_required?'checked':'')+'> Required</label><label class="feature-active"><input data-input-field="is_active" type="checkbox" '+(r.is_active?'checked':'')+'> Active</label><button class="secondary" data-save-input-template="'+r.id+'" type="button">Save</button><button class="delete" data-delete-input-template="'+r.id+'" type="button">Remove</button></div></article>').join("");
+ host.querySelectorAll("[data-save-input-template]").forEach(b=>b.addEventListener("click",()=>saveInputTemplate(b.dataset.saveInputTemplate)));
+ host.querySelectorAll("[data-delete-input-template]").forEach(b=>b.addEventListener("click",()=>deleteInputTemplate(b.dataset.deleteInputTemplate)));
+}
+async function saveInputTemplate(id){
+ const card=$("input-requirement-template-list").querySelector('[data-input-template="'+id+'"]');if(!card)return;
+ const get=k=>card.querySelector('[data-input-field="'+k+'"]');
+ const requirement_name=get("requirement_name").value.trim(),description=get("description").value.trim();
+ if(!requirement_name||!description){alert("Enter the input name and its description.");return;}
+ const {error}=await db.from("package_input_requirements").update({requirement_name,description,is_required:get("is_required").checked,is_active:get("is_active").checked,updated_at:new Date().toISOString()}).eq("id",id);
+ if(error){alert("Could not save requirement: "+error.message);return;}
+ await loadInputRequirementTemplates();
+}
+async function deleteInputTemplate(id){
+ if(!confirm("Remove this requirement from the package template? Existing client tracking records will be retained."))return;
+ const {error}=await db.from("package_input_requirements").delete().eq("id",id);
+ if(error){alert("Could not remove requirement: "+error.message);return;}
+ await loadInputRequirementTemplates();
+}
+$("input-requirement-add").addEventListener("click",async()=>{
+ const packageId=$("feature-package-select").value;if(!packageId){alert("Choose a package first.");return;}
+ const requirement_name=prompt("Input or document name required from the client:");if(!requirement_name?.trim())return;
+ const description=prompt("Explain what the client should provide:");if(!description?.trim())return;
+ const {error}=await db.from("package_input_requirements").insert({package_id:packageId,requirement_name:requirement_name.trim(),description:description.trim(),is_required:true,display_order:Date.now()%100000,is_active:true});
+ if(error){alert("Could not add requirement: "+error.message);return;}
+ await loadInputRequirementTemplates();
+});
+async function loadLeadInputTracking(initialise=false){
+ const leadId=$("feature-lead-select").value,host=$("input-requirement-tracker");
+ if(!leadId){host.innerHTML='<p class="empty">Select an existing lead to track received and pending inputs.</p>';return;}
+ if(initialise){
+  const {data:existing,error:readError}=await db.from("enquiry_input_tracking").select("id").eq("enquiry_id",leadId);
+  if(readError){host.innerHTML='<p class="empty">Could not check existing checklist.</p>';return;}
+  if(!existing?.length){
+   const pkg=featurePackages.find(p=>p.id===$("feature-package-select").value);
+   if(!pkg){host.innerHTML='<p class="empty">Choose the package first.</p>';return;}
+   const {data:templates,error}=await db.from("package_input_requirements").select("*").eq("package_id",pkg.id).eq("is_active",true).order("display_order");
+   if(error){host.innerHTML='<p class="empty">Could not load package requirements.</p>';return;}
+   if(templates?.length){
+    const rows=templates.map(t=>({enquiry_id:leadId,requirement_id:t.id,requirement_name:t.requirement_name,description:t.description,is_required:t.is_required,status:"pending"}));
+    const saved=await db.from("enquiry_input_tracking").insert(rows);
+    if(saved.error){host.innerHTML='<p class="empty">Could not initialise checklist: '+safe(saved.error.message)+'</p>';return;}
+   }
+  }
+ }
+ host.innerHTML='<p class="empty">Loading client inputs…</p>';
+ const {data,error}=await db.from("enquiry_input_tracking").select("*").eq("enquiry_id",leadId).order("created_at");
+ if(error){host.innerHTML='<p class="empty">Could not load client input tracking: '+safe(error.message)+'</p>';return;}
+ if(!data?.length){host.innerHTML='<p class="empty">No checklist initialised. Click Load / Initialise for Selected Lead.</p>';return;}
+ const received=data.filter(x=>x.status==="received").length,pending=data.filter(x=>x.is_required&&x.status!=="received"&&x.status!=="not_required").length;
+ host.innerHTML='<div class="input-tracker-summary"><strong>'+received+' received</strong><span>'+pending+' required item(s) still pending</span></div>'+data.map(r=>'<article class="input-tracker-row" data-input-track="'+r.id+'"><div class="input-tracker-copy"><strong>'+safe(r.requirement_name)+'</strong>'+(r.is_required?'<span class="required-tag">Required</span>':'<span class="optional-tag">Optional</span>')+'<p>'+safe(r.description||"")+'</p></div><div class="input-tracker-controls"><label>Status<select data-track-field="status">'+Object.entries(inputStatusLabels).map(([v,l])=>'<option value="'+v+'" '+(r.status===v?'selected':'')+'>'+l+'</option>').join("")+'</select></label><label>Client response / file reference<input data-track-field="client_response" value="'+safe(r.client_response||"")+'" placeholder="e.g. Logo received by email"></label><label>Admin note<input data-track-field="admin_note" value="'+safe(r.admin_note||"")+'" placeholder="Internal note"></label><button class="primary" type="button" data-save-input-track="'+r.id+'">Save Status</button></div></article>').join("");
+ host.querySelectorAll("[data-save-input-track]").forEach(b=>b.addEventListener("click",()=>saveLeadInputTracking(b.dataset.saveInputTrack)));
+}
+async function saveLeadInputTracking(id){
+ const card=$("input-requirement-tracker").querySelector('[data-input-track="'+id+'"]');if(!card)return;
+ const get=k=>card.querySelector('[data-track-field="'+k+'"]'),status=get("status").value;
+ const payload={status,client_response:get("client_response").value.trim()||null,admin_note:get("admin_note").value.trim()||null,received_at:status==="received"?new Date().toISOString():null,updated_at:new Date().toISOString()};
+ const {error}=await db.from("enquiry_input_tracking").update(payload).eq("id",id);
+ if(error){alert("Could not update client input status: "+error.message);return;}
+ await loadLeadInputTracking(false);
+}
+$("input-tracker-load").addEventListener("click",()=>loadLeadInputTracking(true));
+
 async function loadFeaturePackages(){
  const select=$("feature-package-select");select.innerHTML='<option value="">Loading packages…</option>';
  const {data,error}=await db.from("pricing_packages").select("id,name,features,display_order").order("display_order");
@@ -119,7 +192,7 @@ async function loadFeatureRows(){
  if(error){host.innerHTML='<p class="empty">Could not load feature details. Check admin permissions and refresh.</p>';return;}
  featureRows=data||[];const priceMap={};(prices||[]).forEach(x=>priceMap[x.country_code]=x);
  summary.innerHTML='<strong>'+safe(pkg.name)+'</strong><span>'+featureRows.length+' features · '+safe(marketConfig[country].country_name)+' package price: '+safe(marketConfig[country].currency)+' '+Number(priceMap[country]?.amount||0).toLocaleString()+'</span>';
- renderFeatureRows();
+ renderFeatureRows();await loadInputRequirementTemplates();
 }
 function renderFeatureRows(){
  const host=$("feature-list"),country=$("feature-country-select").value;
@@ -165,7 +238,7 @@ $("feature-lead-select").addEventListener("change",async()=>{
  $("feature-client-phone").value=lead.phone||"";
  if(lead.package_name){const pkg=featurePackages.find(p=>p.name===lead.package_name);if(pkg){$("feature-package-select").value=pkg.id;}}
  if(["IN","US","CA","GB"].includes(String(lead.package_country_code||"").toUpperCase()))$("feature-country-select").value=lead.package_country_code.toUpperCase();
- await loadFeatureRows();
+ await loadFeatureRows();await loadLeadInputTracking(false);
 });
 $("feature-send-email").addEventListener("click",async()=>{
  const pkg=featurePackages.find(p=>p.id===$("feature-package-select").value),email=$("feature-client-email").value.trim(),name=$("feature-client-name").value.trim(),country=$("feature-country-select").value,leadId=$("feature-lead-select").value,feedback=$("feature-send-feedback"),btn=$("feature-send-email");
