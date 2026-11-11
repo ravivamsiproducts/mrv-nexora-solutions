@@ -63,6 +63,9 @@
 @media(max-width:760px){.about-two-col,.founder-grid{grid-template-columns:1fr;gap:25px}.commitment-grid{grid-template-columns:1fr 1fr}.process-grid{grid-template-columns:1fr 1fr}.about-hero{padding:65px 0 75px}.founder-years{margin-top:25px}}
 @media(max-width:520px){.commitment-grid,.process-grid{grid-template-columns:1fr}.commitment-grid article{min-height:unset}.process-grid>div{padding:20px}}
 
+/* Keep the Contact destination visible below the sticky navigation. */
+#contact{scroll-margin-top:100px}
+
 /* Contact & project enquiry */
 .contact-section{background:#f3f7fd;padding-top:90px}
 .contact-callout{display:flex;justify-content:space-between;align-items:center;gap:30px;padding:42px 48px;border-radius:12px;background:linear-gradient(110deg,#0b2044,#1555a8 68%,#087f9e);color:#fff;margin-bottom:28px;overflow:hidden;position:relative}
