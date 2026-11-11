@@ -3,7 +3,7 @@ const URL="https://pjrturqykjvplyrbvjte.supabase.co";
 const KEY="sb_publishable_-M4jYj9CgTglX-IPOCfT-w_tedDSZFF";
 const db=window.supabase.createClient(URL,KEY);
 const $=id=>document.getElementById(id);
-let enquiries=[],selected=null,adminUser=null;
+let enquiries=[],selected=null,adminUser=null,featurePackages=[],featureRows=[];
 const statuses=[["new","New"],["contacted","Contacted"],["quotation_sent","Quotation Sent"],["confirmed","Confirmed"],["in_progress","In Progress"],["completed","Completed"],["cancelled","Cancelled"]];
 const safe=(v)=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function showLogin(message=""){ $("login-view").hidden=false;$("dashboard-view").hidden=true;if(message){$("login-feedback").textContent=message;$("login-feedback").className="feedback error";}}
@@ -16,7 +16,7 @@ async function verifySession(){
 }
 $("login-form").addEventListener("submit",async e=>{e.preventDefault();const f=new FormData(e.currentTarget);const b=e.currentTarget.querySelector("button");b.disabled=true;b.textContent="Signing in…";const {data,error}=await db.auth.signInWithPassword({email:f.get("email"),password:f.get("password")});b.disabled=false;b.textContent="Sign in to dashboard";if(error){showLogin("Sign-in failed. Check your email and password.");return;}adminUser=data.user;if(String(data.user.app_metadata?.role||"")!=="admin"){await db.auth.signOut();showLogin("Signed in, but this account is not assigned the admin role.");return;}showDashboard();});
 $("logout-button").addEventListener("click",async()=>{await db.auth.signOut();adminUser=null;showLogin();});
-document.querySelectorAll(".side-link").forEach(btn=>btn.addEventListener("click",()=>{document.querySelectorAll(".side-link").forEach(x=>x.classList.toggle("active",x===btn));const view=btn.dataset.view;$("enquiries-view").hidden=view!=="enquiries";$("pricing-view").hidden=view!=="pricing";$("settings-view").hidden=view!=="settings";$("page-title").textContent=view==="settings"?"Contact Settings":view==="pricing"?"Pricing Management":"Project Enquiries";if(view==="pricing")loadPricingPackages();}));
+document.querySelectorAll(".side-link").forEach(btn=>btn.addEventListener("click",()=>{document.querySelectorAll(".side-link").forEach(x=>x.classList.toggle("active",x===btn));const view=btn.dataset.view;$("enquiries-view").hidden=view!=="enquiries";$("pricing-view").hidden=view!=="pricing";$("settings-view").hidden=view!=="settings";$("features-view").hidden=view!=="features";$("page-title").textContent=view==="settings"?"Contact Settings":view==="pricing"?"Pricing Management":view==="features"?"Package Features":"Project Enquiries";if(view==="pricing")loadPricingPackages();if(view==="features")loadFeaturePackages();}));
 async function loadEnquiries(){
  $("enquiry-list").innerHTML='<p class="empty">Loading enquiries…</p>';
  const {data,error}=await db.from("project_enquiries").select("*").order("created_at",{ascending:false});
@@ -66,7 +66,25 @@ $("add-communication").addEventListener("click",async()=>{
  $("communication-message").value="";await loadCommunicationHistory(selected.id);
 });
 
-function openDetails(id){selected=enquiries.find(x=>x.id===id);if(!selected)return;$("detail-name").textContent=selected.customer_name;$("admin-notes").value=selected.admin_notes||"";const fields=[["Business",selected.business_name],["Email",selected.email],["Phone",selected.phone],["Service",selected.project_type],["Budget",selected.estimated_budget],["Selected Package",selected.package_name],["Package Country",selected.package_country_code],["Package Currency",selected.package_currency],["Package Price",selected.package_price!==null&&selected.package_price!==undefined?Number(selected.package_price).toLocaleString():""],["Submitted",new Date(selected.created_at).toLocaleString()],["Project Details",selected.description],["Required Features",selected.required_features],["Expected Timeline",selected.expected_timeline]];$("detail-content").innerHTML=fields.filter(f=>f[1]).map(f=>'<div><b>'+safe(f[0])+'</b>'+safe(f[1])+'</div>').join("");$("follow-up-at").value=selected.follow_up_at?new Date(new Date(selected.follow_up_at).getTime()-new Date(selected.follow_up_at).getTimezoneOffset()*60000).toISOString().slice(0,16):"";$("lead-priority").value=selected.lead_priority||"medium";loadCommunicationHistory(selected.id);$("detail-whatsapp").onclick=()=>window.open("https://wa.me/"+String(selected.phone||"").replace(/\D/g,""),"_blank","noopener");$("detail-modal").hidden=false;}
+
+async function sendPackageBreakdown(){
+ if(!selected?.email){alert("This lead does not have a valid email address.");return;}
+ const names=featurePackages.map((p,i)=>(i+1)+". "+p.name).join("\n");
+ let pkg=featurePackages.find(p=>p.name===selected.package_name);
+ if(!pkg){const choice=prompt("Choose package number to send:\n"+names,"1");if(!choice)return;pkg=featurePackages[Number(choice)-1];}
+ if(!pkg){alert("Please select a valid package.");return;}
+ let country=String(selected.package_country_code||"IN").toUpperCase();if(!["IN","US","CA","GB"].includes(country))country="IN";
+ const chosen=prompt("Select the client's price market: IN (India), US (USA), CA (Canada), GB (UK)",country);
+ if(!chosen)return;country=chosen.trim().toUpperCase();if(!["IN","US","CA","GB"].includes(country)){alert("Enter IN, US, CA or GB.");return;}
+ const btn=$("send-package-breakdown");btn.disabled=true;btn.textContent="Sending…";
+ const {data,error}=await db.functions.invoke("send-package-breakdown",{body:{enquiry_id:selected.id,package_id:pkg.id,country_code:country}});
+ btn.disabled=false;btn.textContent="Email Package Details";
+ if(error){alert("Could not send package details. "+(error.message||"Check the email function and try again."));return;}
+ await db.from("enquiry_communications").insert({enquiry_id:selected.id,channel:"email",message:"Package feature breakdown emailed to "+selected.email+" for "+pkg.name+" ("+country+").",created_by:adminUser.id});
+ await loadCommunicationHistory(selected.id);alert("Package feature breakdown sent to "+selected.email+".");
+}
+
+function openDetails(id){selected=enquiries.find(x=>x.id===id);if(!selected)return;$("detail-name").textContent=selected.customer_name;$("admin-notes").value=selected.admin_notes||"";const fields=[["Business",selected.business_name],["Email",selected.email],["Phone",selected.phone],["Service",selected.project_type],["Budget",selected.estimated_budget],["Selected Package",selected.package_name],["Package Country",selected.package_country_code],["Package Currency",selected.package_currency],["Package Price",selected.package_price!==null&&selected.package_price!==undefined?Number(selected.package_price).toLocaleString():""],["Submitted",new Date(selected.created_at).toLocaleString()],["Project Details",selected.description],["Required Features",selected.required_features],["Expected Timeline",selected.expected_timeline]];$("detail-content").innerHTML=fields.filter(f=>f[1]).map(f=>'<div><b>'+safe(f[0])+'</b>'+safe(f[1])+'</div>').join("");$("follow-up-at").value=selected.follow_up_at?new Date(new Date(selected.follow_up_at).getTime()-new Date(selected.follow_up_at).getTimezoneOffset()*60000).toISOString().slice(0,16):"";$("lead-priority").value=selected.lead_priority||"medium";loadCommunicationHistory(selected.id);$("detail-whatsapp").onclick=()=>window.open("https://wa.me/"+String(selected.phone||"").replace(/\D/g,""),"_blank","noopener");$("send-package-breakdown").onclick=sendPackageBreakdown;$("detail-modal").hidden=false;}
 $("modal-close").addEventListener("click",()=>$("detail-modal").hidden=true);
 $("detail-modal").addEventListener("click",e=>{if(e.target===$("detail-modal"))$("detail-modal").hidden=true;});
 $("save-notes").addEventListener("click",async()=>{if(!selected)return;const {error}=await db.from("project_enquiries").update({admin_notes:$("admin-notes").value,updated_at:new Date().toISOString()}).eq("id",selected.id);if(error){alert("Notes could not be saved.");return;}selected.admin_notes=$("admin-notes").value;alert("Admin notes saved.");});
@@ -82,6 +100,65 @@ const marketConfig={
  CA:{country_name:"Canada",currency:"CAD"},
  GB:{country_name:"United Kingdom",currency:"GBP"}
 };
+
+async function loadFeaturePackages(){
+ const select=$("feature-package-select");select.innerHTML='<option value="">Loading packages…</option>';
+ const {data,error}=await db.from("pricing_packages").select("id,name,features,display_order").order("display_order");
+ if(error){select.innerHTML='<option value="">Could not load packages</option>';return;}
+ featurePackages=data||[];const previous=select.value;
+ select.innerHTML='<option value="">Select a package</option>'+featurePackages.map(p=>'<option value="'+p.id+'">'+safe(p.name)+'</option>').join("");
+ if(previous&&featurePackages.some(p=>p.id===previous))select.value=previous;else if(featurePackages.length)select.value=featurePackages[0].id;
+ await loadFeatureRows();
+}
+async function loadFeatureRows(){
+ const packageId=$("feature-package-select").value,host=$("feature-list"),summary=$("feature-package-summary"),pkg=featurePackages.find(p=>p.id===packageId);
+ if(!pkg){host.innerHTML='<p class="empty">Select a package to manage its features.</p>';summary.innerHTML="";return;}
+ host.innerHTML='<p class="empty">Loading feature details…</p>';
+ const [{data,error},{data:prices}]=await Promise.all([db.from("package_feature_details").select("*").eq("package_id",packageId).order("display_order"),db.from("pricing_package_prices").select("*").eq("package_id",packageId)]);
+ if(error){host.innerHTML='<p class="empty">Could not load feature details. Check admin permissions and refresh.</p>';return;}
+ featureRows=data||[];const priceMap={};(prices||[]).forEach(x=>priceMap[x.country_code]=x);
+ summary.innerHTML='<strong>'+safe(pkg.name)+'</strong><span>'+featureRows.length+' feature details · Package prices: '+["IN","US","CA","GB"].map(c=>marketConfig[c].currency+" "+Number(priceMap[c]?.amount||0).toLocaleString()).join(" · ")+'</span>';
+ renderFeatureRows();
+}
+function renderFeatureRows(){
+ const host=$("feature-list");if(!featureRows.length){host.innerHTML='<p class="empty">No feature details found. Use Add Feature to create one.</p>';return;}
+ host.innerHTML=featureRows.map((f,i)=>'<article class="feature-admin-card" data-feature-card="'+f.id+'"><div class="feature-card-head"><strong>Feature '+(i+1)+'</strong><button class="delete" type="button" data-delete-feature="'+f.id+'">Remove</button></div><label>Feature Name<input data-field="feature_name" maxlength="160" value="'+safe(f.feature_name)+'"></label><label>Explanation<textarea data-field="explanation" rows="3" maxlength="1600">'+safe(f.explanation||"")+'</textarea></label><div class="feature-price-grid"><label>India · ₹<input data-field="price_inr" type="number" min="0" step="0.01" value="'+(f.price_inr??0)+'"></label><label>USA · $<input data-field="price_usd" type="number" min="0" step="0.01" value="'+(f.price_usd??0)+'"></label><label>Canada · C$<input data-field="price_cad" type="number" min="0" step="0.01" value="'+(f.price_cad??0)+'"></label><label>UK · £<input data-field="price_gbp" type="number" min="0" step="0.01" value="'+(f.price_gbp??0)+'"></label></div><div class="feature-card-foot"><label class="feature-active"><input data-field="is_active" type="checkbox" '+(f.is_active?'checked':'')+'> Include in package breakdown</label><button class="primary" type="button" data-save-feature="'+f.id+'">Save Feature</button></div><p class="feedback" data-feature-feedback></p></article>').join("");
+ host.querySelectorAll("[data-save-feature]").forEach(b=>b.addEventListener("click",()=>saveFeature(b.dataset.saveFeature)));
+ host.querySelectorAll("[data-delete-feature]").forEach(b=>b.addEventListener("click",()=>deleteFeature(b.dataset.deleteFeature)));
+}
+async function saveFeature(id){
+ const card=$("feature-list").querySelector('[data-feature-card="'+id+'"]'),row=featureRows.find(x=>x.id===id);if(!card||!row)return;
+ const val=name=>card.querySelector('[data-field="'+name+'"]'),feature_name=val("feature_name").value.trim(),explanation=val("explanation").value.trim(),amounts=["price_inr","price_usd","price_cad","price_gbp"].map(k=>Number(val(k).value)),feedback=card.querySelector("[data-feature-feedback]");
+ if(!feature_name||!explanation||amounts.some(x=>!Number.isFinite(x)||x<0)){feedback.textContent="Enter a feature name, explanation and valid non-negative prices.";feedback.className="feedback error";return;}
+ const payload={feature_name,explanation,price_inr:amounts[0],price_usd:amounts[1],price_cad:amounts[2],price_gbp:amounts[3],is_active:val("is_active").checked,updated_at:new Date().toISOString()};
+ const {error}=await db.from("package_feature_details").update(payload).eq("id",id);
+ if(error){feedback.textContent="Save failed: "+error.message;feedback.className="feedback error";return;}
+ const pkg=featurePackages.find(p=>p.id===row.package_id),features=(pkg.features||[]).map(x=>x===row.feature_name?feature_name:x);
+ const changed=await db.from("pricing_packages").update({features,updated_at:new Date().toISOString()}).eq("id",pkg.id);
+ if(changed.error){feedback.textContent="Details saved, but package feature list sync failed: "+changed.error.message;feedback.className="feedback error";return;}
+ pkg.features=features;Object.assign(row,payload);feedback.textContent="Feature details saved.";feedback.className="feedback";
+}
+async function deleteFeature(id){
+ const row=featureRows.find(x=>x.id===id);if(!row||!confirm("Remove this feature from the package?"))return;
+ const pkg=featurePackages.find(p=>p.id===row.package_id),removed=await db.from("package_feature_details").delete().eq("id",id);
+ if(removed.error){alert("Feature could not be removed: "+removed.error.message);return;}
+ const features=(pkg.features||[]).filter(x=>x!==row.feature_name),synced=await db.from("pricing_packages").update({features,updated_at:new Date().toISOString()}).eq("id",pkg.id);
+ if(synced.error){alert("Feature record removed, but package list sync failed: "+synced.error.message);return;}
+ pkg.features=features;await loadFeatureRows();
+}
+$("feature-package-select").addEventListener("change",loadFeatureRows);
+$("features-refresh").addEventListener("click",loadFeaturePackages);
+$("feature-add").addEventListener("click",async()=>{
+ const pkg=featurePackages.find(p=>p.id===$("feature-package-select").value);if(!pkg)return;
+ const name=prompt("Enter the new feature name:");if(!name||!name.trim())return;
+ if((pkg.features||[]).some(x=>x.toLowerCase()===name.trim().toLowerCase())){alert("This feature already exists in the package.");return;}
+ const {error}=await db.from("package_feature_details").insert({package_id:pkg.id,feature_name:name.trim(),explanation:"Add a clear explanation of what this feature includes and what the client can expect.",price_inr:0,price_usd:0,price_cad:0,price_gbp:0,display_order:(pkg.features||[]).length+1,is_active:true});
+ if(error){alert("Could not add feature: "+error.message);return;}
+ const features=[...(pkg.features||[]),name.trim()],synced=await db.from("pricing_packages").update({features,updated_at:new Date().toISOString()}).eq("id",pkg.id);
+ if(synced.error){alert("Feature added, but package list sync failed: "+synced.error.message);return;}
+ pkg.features=features;await loadFeatureRows();
+});
+
 let pricingPackages=[];
 async function loadPricingPackages(){
  $("admin-pricing-list").innerHTML='<p class="empty">Loading packages…</p>';
