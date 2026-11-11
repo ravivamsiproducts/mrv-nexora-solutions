@@ -78,7 +78,7 @@ async function sendPackageBreakdown(){
  const chosen=prompt("Select the client's price market: IN (India), US (USA), CA (Canada), GB (UK)",country);
  if(!chosen)return;country=chosen.trim().toUpperCase();if(!["IN","US","CA","GB"].includes(country)){alert("Enter IN, US, CA or GB.");return;}
  const btn=$("send-package-breakdown");btn.disabled=true;btn.textContent="Sending…";
- const {data,error}=await db.functions.invoke("send-package-breakdown",{body:{enquiry_id:selected.id,package_id:pkg.id,country_code:country}});
+ const {data,error}=await db.functions.invoke("send-package-breakdown",{body:{enquiry_id:selected.id,package_id:pkg.id,country_code:country,recipient_email:selected.email,recipient_name:selected.customer_name}});
  btn.disabled=false;btn.textContent="Email Package Details";
  if(error){alert("Could not send package details. "+(error.message||"Check the email function and try again."));return;}
  await db.from("enquiry_communications").insert({enquiry_id:selected.id,channel:"email",message:"Package feature breakdown emailed to "+selected.email+" for "+pkg.name+" ("+country+").",created_by:adminUser.id});
