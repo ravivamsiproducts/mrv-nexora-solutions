@@ -60,6 +60,7 @@ if ("IntersectionObserver" in window) {
   const enquiryHomeNext=enquiryPanel?.nextElementSibling||null;
   const openEnquiry=()=>{if(!enquiryDialog||!enquiryPanel)return;enquirySlot.append(enquiryPanel);if(typeof enquiryDialog.showModal==="function")enquiryDialog.showModal();else enquiryDialog.setAttribute("open","");};
   const closeEnquiry=()=>{if(!enquiryDialog||!enquiryPanel)return;if(enquiryDialog.open&&typeof enquiryDialog.close==="function")enquiryDialog.close();else enquiryDialog.removeAttribute("open");if(enquiryHome){if(enquiryHomeNext&&enquiryHomeNext.parentElement===enquiryHome)enquiryHome.insertBefore(enquiryPanel,enquiryHomeNext);else enquiryHome.append(enquiryPanel);}};
+  window.openProjectEnquiry=()=>{openEnquiry();};
   document.getElementById("hero-enquiry-open")?.addEventListener("click",event=>{event.preventDefault();if(form.elements.project_type)form.elements.project_type.value="";openEnquiry();});
   const enquiryParams=new URLSearchParams(window.location.search);
   const serviceParam=enquiryParams.get("service");
@@ -211,6 +212,7 @@ if ("IntersectionObserver" in window) {
   grid.addEventListener("click",(event) => {
     const link = event.target.closest(".pricing-cta[data-service]");
     if (!link) return;
+    event.preventDefault();
     const form = document.getElementById("project-enquiry-form");
     const serviceField = form?.querySelector('[name="project_type"]');
     if (serviceField) {
@@ -242,6 +244,7 @@ if ("IntersectionObserver" in window) {
         window.selectedPricingPackage = null; summary.hidden = true; summary.textContent = "";
       });
     }
+    window.openProjectEnquiry?.();
   });
   selector.addEventListener("change",() => {
     userChanged=true;render();updateBudgetOptions();
