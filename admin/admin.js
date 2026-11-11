@@ -241,13 +241,32 @@ function refreshFeatureLeadOptions(){
 }
 $("feature-country-select").addEventListener("change",()=>loadFeatureRows());
 $("feature-lead-select").addEventListener("change",async()=>{
- const lead=enquiries.find(x=>x.id===$("feature-lead-select").value);if(!lead)return;
+ const lead=enquiries.find(x=>x.id===$("feature-lead-select").value);
+ if(!lead)return;
  $("feature-client-name").value=lead.customer_name||"";
  $("feature-client-email").value=lead.email||"";
  $("feature-client-phone").value=lead.phone||"";
- if(lead.package_name){const pkg=featurePackages.find(p=>p.name===lead.package_name);if(pkg){$("feature-package-select").value=pkg.id;}}
- if(["IN","US","CA","GB"].includes(String(lead.package_country_code||"").toUpperCase()))$("feature-country-select").value=lead.package_country_code.toUpperCase();
- await loadFeatureRows();await loadLeadInputTracking(false);
+
+ // Make sure the package list is ready before matching the package saved on this lead.
+ if(!featurePackages.length)await loadFeaturePackages();
+ const normalisePackageName=value=>String(value||"").trim().toLowerCase().replace(/\\s+/g," ");
+ const leadPackageName=normalisePackageName(lead.package_name);
+ const matchedPackage=leadPackageName
+  ?featurePackages.find(pkg=>normalisePackageName(pkg.name)===leadPackageName)
+  :null;
+ if(matchedPackage){
+  $("feature-package-select").value=matchedPackage.id;
+ }else if(lead.package_name){
+  $("feature-send-feedback").textContent="The lead's saved package (“"+lead.package_name+"”) could not be matched. Please choose the package manually.";
+  $("feature-send-feedback").className="feedback error";
+ }else{
+  $("feature-send-feedback").textContent="No package is linked to this lead. Please choose a package manually.";
+  $("feature-send-feedback").className="feedback";
+ }
+ const market=String(lead.package_country_code||"").toUpperCase();
+ if(["IN","US","CA","GB"].includes(market))$("feature-country-select").value=market;
+ await loadFeatureRows();
+ await loadLeadInputTracking(false);
 });
 $("send-client-input-link").addEventListener("click",async()=>{
  const leadId=$("feature-lead-select").value,feedback=$("feature-send-feedback"),btn=$("send-client-input-link");
