@@ -21,7 +21,7 @@ async function loadEnquiries(){
  $("enquiry-list").innerHTML='<p class="empty">Loading enquiries…</p>';
  const {data,error}=await db.from("project_enquiries").select("*").order("created_at",{ascending:false});
  if(error){$("enquiry-list").innerHTML='<p class="empty">Could not load enquiries. Please refresh or check admin permissions.</p>';return;}
- enquiries=data||[];renderFollowUps();$("total-count").textContent=enquiries.length;$("new-count").textContent=enquiries.filter(x=>x.status==="new").length;$("progress-count").textContent=enquiries.filter(x=>x.status==="in_progress").length;$("closed-count").textContent=enquiries.filter(x=>["completed","cancelled"].includes(x.status)).length;$("nav-count").textContent=enquiries.filter(x=>x.status==="new").length;renderEnquiries();
+ enquiries=data||[];refreshFeatureLeadOptions();renderFollowUps();$("total-count").textContent=enquiries.length;$("new-count").textContent=enquiries.filter(x=>x.status==="new").length;$("progress-count").textContent=enquiries.filter(x=>x.status==="in_progress").length;$("closed-count").textContent=enquiries.filter(x=>["completed","cancelled"].includes(x.status)).length;$("nav-count").textContent=enquiries.filter(x=>x.status==="new").length;renderEnquiries();
 }
 
 function renderFollowUps(){
@@ -112,26 +112,30 @@ async function loadFeaturePackages(){
  await loadFeatureRows();
 }
 async function loadFeatureRows(){
- const packageId=$("feature-package-select").value,host=$("feature-list"),summary=$("feature-package-summary"),pkg=featurePackages.find(p=>p.id===packageId);
+ const packageId=$("feature-package-select").value,country=$("feature-country-select").value,host=$("feature-list"),summary=$("feature-package-summary"),pkg=featurePackages.find(p=>p.id===packageId);
  if(!pkg){host.innerHTML='<p class="empty">Select a package to manage its features.</p>';summary.innerHTML="";return;}
  host.innerHTML='<p class="empty">Loading feature details…</p>';
  const [{data,error},{data:prices}]=await Promise.all([db.from("package_feature_details").select("*").eq("package_id",packageId).order("display_order"),db.from("pricing_package_prices").select("*").eq("package_id",packageId)]);
  if(error){host.innerHTML='<p class="empty">Could not load feature details. Check admin permissions and refresh.</p>';return;}
  featureRows=data||[];const priceMap={};(prices||[]).forEach(x=>priceMap[x.country_code]=x);
- summary.innerHTML='<strong>'+safe(pkg.name)+'</strong><span>'+featureRows.length+' feature details · Package prices: '+["IN","US","CA","GB"].map(c=>marketConfig[c].currency+" "+Number(priceMap[c]?.amount||0).toLocaleString()).join(" · ")+'</span>';
+ summary.innerHTML='<strong>'+safe(pkg.name)+'</strong><span>'+featureRows.length+' features · '+safe(marketConfig[country].country_name)+' package price: '+safe(marketConfig[country].currency)+' '+Number(priceMap[country]?.amount||0).toLocaleString()+'</span>';
  renderFeatureRows();
 }
 function renderFeatureRows(){
- const host=$("feature-list");if(!featureRows.length){host.innerHTML='<p class="empty">No feature details found. Use Add Feature to create one.</p>';return;}
- host.innerHTML=featureRows.map((f,i)=>'<article class="feature-admin-card" data-feature-card="'+f.id+'"><div class="feature-card-head"><strong>Feature '+(i+1)+'</strong><button class="delete" type="button" data-delete-feature="'+f.id+'">Remove</button></div><label>Feature Name<input data-field="feature_name" maxlength="160" value="'+safe(f.feature_name)+'"></label><label>Explanation<textarea data-field="explanation" rows="3" maxlength="1600">'+safe(f.explanation||"")+'</textarea></label><div class="feature-price-grid"><label>India · ₹<input data-field="price_inr" type="number" min="0" step="0.01" value="'+(f.price_inr??0)+'"></label><label>USA · $<input data-field="price_usd" type="number" min="0" step="0.01" value="'+(f.price_usd??0)+'"></label><label>Canada · C$<input data-field="price_cad" type="number" min="0" step="0.01" value="'+(f.price_cad??0)+'"></label><label>UK · £<input data-field="price_gbp" type="number" min="0" step="0.01" value="'+(f.price_gbp??0)+'"></label></div><div class="feature-card-foot"><label class="feature-active"><input data-field="is_active" type="checkbox" '+(f.is_active?'checked':'')+'> Include in package breakdown</label><button class="primary" type="button" data-save-feature="'+f.id+'">Save Feature</button></div><p class="feedback" data-feature-feedback></p></article>').join("");
+ const host=$("feature-list"),country=$("feature-country-select").value;
+ const key=({IN:"price_inr",US:"price_usd",CA:"price_cad",GB:"price_gbp"})[country];
+ const symbol=({IN:"₹",US:"$",CA:"C$",GB:"£"})[country];
+ if(!featureRows.length){host.innerHTML='<p class="empty">No feature details found. Use Add Feature to create one.</p>';return;}
+ host.innerHTML=featureRows.map((f,i)=>'<article class="feature-admin-card" data-feature-card="'+f.id+'"><div class="feature-card-head"><strong>Feature '+(i+1)+'</strong><button class="delete" type="button" data-delete-feature="'+f.id+'">Remove</button></div><label>Feature Name<input data-field="feature_name" maxlength="160" value="'+safe(f.feature_name)+'"></label><label>Explanation<textarea data-field="explanation" rows="3" maxlength="1600">'+safe(f.explanation||"")+'</textarea></label><div class="feature-price-grid feature-price-single"><label>'+safe(marketConfig[country].country_name)+' Price · '+symbol+'<input data-field="price_current" type="number" min="0" step="0.01" value="'+(f[key]??0)+'"></label><span class="feature-country-note">Only '+safe(marketConfig[country].country_name)+' pricing is shown. Change the country above to edit another market.</span></div><div class="feature-card-foot"><label class="feature-active"><input data-field="is_active" type="checkbox" '+(f.is_active?'checked':'')+'> Include in package breakdown</label><button class="primary" type="button" data-save-feature="'+f.id+'">Save Feature</button></div><p class="feedback" data-feature-feedback></p></article>').join("");
  host.querySelectorAll("[data-save-feature]").forEach(b=>b.addEventListener("click",()=>saveFeature(b.dataset.saveFeature)));
  host.querySelectorAll("[data-delete-feature]").forEach(b=>b.addEventListener("click",()=>deleteFeature(b.dataset.deleteFeature)));
 }
 async function saveFeature(id){
  const card=$("feature-list").querySelector('[data-feature-card="'+id+'"]'),row=featureRows.find(x=>x.id===id);if(!card||!row)return;
- const val=name=>card.querySelector('[data-field="'+name+'"]'),feature_name=val("feature_name").value.trim(),explanation=val("explanation").value.trim(),amounts=["price_inr","price_usd","price_cad","price_gbp"].map(k=>Number(val(k).value)),feedback=card.querySelector("[data-feature-feedback]");
- if(!feature_name||!explanation||amounts.some(x=>!Number.isFinite(x)||x<0)){feedback.textContent="Enter a feature name, explanation and valid non-negative prices.";feedback.className="feedback error";return;}
- const payload={feature_name,explanation,price_inr:amounts[0],price_usd:amounts[1],price_cad:amounts[2],price_gbp:amounts[3],is_active:val("is_active").checked,updated_at:new Date().toISOString()};
+ const val=name=>card.querySelector('[data-field="'+name+'"]'),feature_name=val("feature_name").value.trim(),explanation=val("explanation").value.trim(),amount=Number(val("price_current").value),feedback=card.querySelector("[data-feature-feedback]");
+ if(!feature_name||!explanation||!Number.isFinite(amount)||amount<0){feedback.textContent="Enter a feature name, explanation and valid non-negative price.";feedback.className="feedback error";return;}
+ const country=$("feature-country-select").value,key=({IN:"price_inr",US:"price_usd",CA:"price_cad",GB:"price_gbp"})[country];
+ const payload={feature_name,explanation,[key]:amount,is_active:val("is_active").checked,updated_at:new Date().toISOString()};
  const {error}=await db.from("package_feature_details").update(payload).eq("id",id);
  if(error){feedback.textContent="Save failed: "+error.message;feedback.className="feedback error";return;}
  const pkg=featurePackages.find(p=>p.id===row.package_id),features=(pkg.features||[]).map(x=>x===row.feature_name?feature_name:x);
@@ -148,6 +152,50 @@ async function deleteFeature(id){
  pkg.features=features;await loadFeatureRows();
 }
 $("feature-package-select").addEventListener("change",loadFeatureRows);
+function refreshFeatureLeadOptions(){
+ const select=$("feature-lead-select"),old=select.value;
+ select.innerHTML='<option value="">Select a lead to autofill contact details</option>'+enquiries.map(x=>'<option value="'+x.id+'">'+safe(x.customer_name)+' · '+safe(x.email||x.phone||"No contact")+'</option>').join("");
+ if(old&&enquiries.some(x=>x.id===old))select.value=old;
+}
+$("feature-country-select").addEventListener("change",()=>loadFeatureRows());
+$("feature-lead-select").addEventListener("change",async()=>{
+ const lead=enquiries.find(x=>x.id===$("feature-lead-select").value);if(!lead)return;
+ $("feature-client-name").value=lead.customer_name||"";
+ $("feature-client-email").value=lead.email||"";
+ $("feature-client-phone").value=lead.phone||"";
+ if(lead.package_name){const pkg=featurePackages.find(p=>p.name===lead.package_name);if(pkg){$("feature-package-select").value=pkg.id;}}
+ if(["IN","US","CA","GB"].includes(String(lead.package_country_code||"").toUpperCase()))$("feature-country-select").value=lead.package_country_code.toUpperCase();
+ await loadFeatureRows();
+});
+$("feature-send-email").addEventListener("click",async()=>{
+ const pkg=featurePackages.find(p=>p.id===$("feature-package-select").value),email=$("feature-client-email").value.trim(),name=$("feature-client-name").value.trim(),country=$("feature-country-select").value,leadId=$("feature-lead-select").value,feedback=$("feature-send-feedback"),btn=$("feature-send-email");
+ if(!pkg){feedback.textContent="Please choose a package.";feedback.className="feedback error";return;}
+ if(!email||!/^\S+@\S+\.\S+$/.test(email)){feedback.textContent="Enter a valid client email address.";feedback.className="feedback error";return;}
+ btn.disabled=true;btn.textContent="Sending…";feedback.textContent="";
+ const {data,error}=await db.functions.invoke("send-package-breakdown",{body:{package_id:pkg.id,country_code:country,recipient_email:email,recipient_name:name,enquiry_id:leadId||null}});
+ btn.disabled=false;btn.textContent="✉ Send to Email";
+ if(error){feedback.textContent="Email could not be sent: "+(error.message||"Please try again.");feedback.className="feedback error";return;}
+ if(leadId)await db.from("enquiry_communications").insert({enquiry_id:leadId,channel:"email",message:"Package feature breakdown emailed to "+email+" for "+pkg.name+" ("+country+").",created_by:adminUser.id});
+ if(leadId)await loadCommunicationHistory(leadId);
+ feedback.textContent="Package details successfully sent to "+email+".";feedback.className="feedback";
+});
+$("feature-send-whatsapp").addEventListener("click",async()=>{
+ const pkg=featurePackages.find(p=>p.id===$("feature-package-select").value),phone=$("feature-client-phone").value.replace(/\D/g,""),name=$("feature-client-name").value.trim(),country=$("feature-country-select").value,leadId=$("feature-lead-select").value,feedback=$("feature-send-feedback");
+ if(!pkg){feedback.textContent="Please choose a package.";feedback.className="feedback error";return;}
+ if(phone.length<8){feedback.textContent="Enter a valid WhatsApp number with country code.";feedback.className="feedback error";return;}
+ const key=({IN:"price_inr",US:"price_usd",CA:"price_cad",GB:"price_gbp"})[country],symbol=({IN:"₹",US:"$",CA:"C$",GB:"£"})[country];
+ const [{data:priceRows},{data:rows,error}]=await Promise.all([db.from("pricing_package_prices").select("amount").eq("package_id",pkg.id).eq("country_code",country),db.from("package_feature_details").select("feature_name,explanation,"+key+",is_active,display_order").eq("package_id",pkg.id).eq("is_active",true).order("display_order")]);
+ if(error){feedback.textContent="Could not prepare feature details.";feedback.className="feedback error";return;}
+ const total=priceRows?.[0]?.amount;
+ const lines=["*MRV NEXORA SOLUTIONS*","*"+pkg.name+" — Package Details*","Market: "+marketConfig[country].country_name,"Package Price: "+symbol+" "+Number(total||0).toLocaleString(),""];
+ (rows||[]).forEach((f,i)=>lines.push((i+1)+". *"+f.feature_name+"*","   "+f.explanation,"   Estimated value: "+symbol+" "+Number(f[key]||0).toLocaleString(),""));
+ lines.push("Feature-wise values are indicative allocations included in the package total, not additional charges.","Final scope and pricing will be confirmed in the project proposal.","https://mrvnexora.com");
+ const textMsg=(name?"Hi "+name+",\n\n":"Hello,\n\n")+"Thank you for your interest. Please find the package details below.\n\n"+lines.join("\n");
+ window.open("https://wa.me/"+phone+"?text="+encodeURIComponent(textMsg),"_blank","noopener");
+ if(leadId)await db.from("enquiry_communications").insert({enquiry_id:leadId,channel:"whatsapp",message:"Prepared and opened WhatsApp package breakdown for "+pkg.name+" ("+country+").",created_by:adminUser.id});
+ feedback.textContent="WhatsApp message prepared. Review it in WhatsApp and press Send.";feedback.className="feedback";
+});
+
 $("features-refresh").addEventListener("click",loadFeaturePackages);
 $("feature-add").addEventListener("click",async()=>{
  const pkg=featurePackages.find(p=>p.id===$("feature-package-select").value);if(!pkg)return;
