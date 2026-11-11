@@ -16,6 +16,11 @@ if (menuButton && navLinks) {
     });
   });
 }
+// Keep the canonical homepage URL clean when visitors open /index.html directly.
+if (window.location.pathname.endsWith("/index.html")) {
+  const cleanPath = window.location.pathname.slice(0, -"index.html".length);
+  window.history.replaceState(window.history.state, document.title, cleanPath + window.location.search + window.location.hash);
+}
 const year = document.getElementById("year");
 if (year) year.textContent = new Date().getFullYear();
 const sections = [...document.querySelectorAll("main section[id]")];
