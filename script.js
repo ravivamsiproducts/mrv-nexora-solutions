@@ -53,6 +53,17 @@ if ("IntersectionObserver" in window) {
   }
   loadContactSettings();
   const form=document.getElementById("project-enquiry-form"); if(!form)return;
+  const enquiryDialog=document.getElementById("project-enquiry-dialog");
+  const enquirySlot=document.getElementById("project-enquiry-modal-slot");
+  const enquiryPanel=form.closest(".enquiry-panel");
+  const enquiryHome=enquiryPanel?.parentElement;
+  const enquiryHomeNext=enquiryPanel?.nextElementSibling||null;
+  const openEnquiry=()=>{if(!enquiryDialog||!enquiryPanel)return;enquirySlot.append(enquiryPanel);if(typeof enquiryDialog.showModal==="function")enquiryDialog.showModal();else enquiryDialog.setAttribute("open","");};
+  const closeEnquiry=()=>{if(!enquiryDialog||!enquiryPanel)return;if(enquiryDialog.open&&typeof enquiryDialog.close==="function")enquiryDialog.close();else enquiryDialog.removeAttribute("open");if(enquiryHome){if(enquiryHomeNext&&enquiryHomeNext.parentElement===enquiryHome)enquiryHome.insertBefore(enquiryPanel,enquiryHomeNext);else enquiryHome.append(enquiryPanel);}};
+  document.getElementById("hero-enquiry-open")?.addEventListener("click",event=>{event.preventDefault();openEnquiry();});
+  document.getElementById("project-enquiry-close")?.addEventListener("click",closeEnquiry);
+  enquiryDialog?.addEventListener("click",event=>{if(event.target===enquiryDialog)closeEnquiry();});
+  enquiryDialog?.addEventListener("cancel",()=>{closeEnquiry();});
   form.addEventListener("submit",async(event)=>{
     event.preventDefault();const feedback=document.getElementById("enquiry-feedback");const button=form.querySelector("button[type=submit]");const label=button.querySelector(".submit-label");
     const values=Object.fromEntries(new FormData(form).entries());
@@ -95,11 +106,13 @@ if ("IntersectionObserver" in window) {
       feedback.className="form-feedback show error";
       console.error("Enquiry email request failed", error);
     }
+    const submissionSucceeded = feedback.classList.contains("success");
     form.reset();
     window.selectedPricingPackage = null;
     const packageSummary = document.getElementById("selected-package-summary");
     if (packageSummary) { packageSummary.hidden = true; packageSummary.textContent = ""; }
     button.disabled=false;label.textContent="Submit Project Enquiry";
+    if(submissionSucceeded){window.setTimeout(()=>{closeEnquiry();feedback.className="form-feedback";feedback.textContent="";},2600);}
   });
 })();
 
