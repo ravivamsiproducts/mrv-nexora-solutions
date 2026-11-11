@@ -162,8 +162,17 @@ async function loadLeadInputTracking(initialise=false){
  if(error){host.innerHTML='<p class="empty">Could not load client input tracking: '+safe(error.message)+'</p>';return;}
  if(!data?.length){host.innerHTML='<p class="empty">No checklist initialised. Click Load / Initialise for Selected Lead.</p>';return;}
  const received=data.filter(x=>x.status==="received").length,pending=data.filter(x=>x.is_required&&x.status!=="received"&&x.status!=="not_required").length;
- host.innerHTML='<div class="input-tracker-summary"><strong>'+received+' received</strong><span>'+pending+' required item(s) still pending</span></div>'+data.map(r=>'<article class="input-tracker-row" data-input-track="'+r.id+'"><div class="input-tracker-copy"><strong>'+safe(r.requirement_name)+'</strong>'+(r.is_required?'<span class="required-tag">Required</span>':'<span class="optional-tag">Optional</span>')+'<p>'+safe(r.description||"")+'</p></div><div class="input-tracker-controls"><label>Status<select data-track-field="status">'+Object.entries(inputStatusLabels).map(([v,l])=>'<option value="'+v+'" '+(r.status===v?'selected':'')+'>'+l+'</option>').join("")+'</select></label><label>Client response / file reference<input data-track-field="client_response" value="'+safe(r.client_response||"")+'" placeholder="e.g. Logo received by email"></label><label>Admin note<input data-track-field="admin_note" value="'+safe(r.admin_note||"")+'" placeholder="Internal note"></label><button class="primary" type="button" data-save-input-track="'+r.id+'">Save Status</button></div></article>').join("");
+ host.innerHTML='<div class="input-tracker-summary"><strong>'+received+' received</strong><span>'+pending+' required item(s) still pending</span></div>'+data.map(r=>'<article class="input-tracker-row" data-input-track="'+r.id+'"><div class="input-tracker-copy"><strong>'+safe(r.requirement_name)+'</strong>'+(r.is_required?'<span class="required-tag">Required</span>':'<span class="optional-tag">Optional</span>')+'<p>'+safe(r.description||"")+'</p></div><div class="input-tracker-controls"><label>Status<select data-track-field="status">'+Object.entries(inputStatusLabels).map(([v,l])=>'<option value="'+v+'" '+(r.status===v?'selected':'')+'>'+l+'</option>').join("")+'</select></label><label>Client response / file reference<input data-track-field="client_response" value="'+safe(r.client_response||"")+'" placeholder="e.g. Logo received by email"></label><label>Admin note<input data-track-field="admin_note" value="'+safe(r.admin_note||"")+'" placeholder="Internal note"></label><div class="input-row-actions"><button class="primary" type="button" data-save-input-track="'+r.id+'">Save Status</button><button class="secondary" type="button" data-view-input-files="'+r.id+'">View Uploads</button></div><div class="input-upload-files" data-input-files></div></div></article>').join("");
  host.querySelectorAll("[data-save-input-track]").forEach(b=>b.addEventListener("click",()=>saveLeadInputTracking(b.dataset.saveInputTrack)));
+ host.querySelectorAll("[data-view-input-files]").forEach(b=>b.addEventListener("click",()=>viewLeadInputFiles(b.dataset.viewInputFiles)));
+}
+async function viewLeadInputFiles(id){
+ const row=$("input-requirement-tracker").querySelector('[data-input-track="'+id+'"]'),host=row?.querySelector("[data-input-files]");if(!host)return;
+ host.innerHTML='<span class="muted">Loading uploads…</span>';
+ const {data,error}=await db.functions.invoke("client-input-portal",{body:{action:"list_files",tracking_id:id}});
+ if(error||!data?.ok){host.textContent="Could not load uploaded files.";return;}
+ if(!data.files?.length){host.textContent="No files uploaded for this requirement yet.";return;}
+ host.innerHTML=data.files.map(f=>'<a href="'+safe(f.url)+'" target="_blank" rel="noopener">'+safe(f.original_filename)+'</a> <small>('+Math.max(1,Math.round(f.size_bytes/1024))+' KB)</small>').join("<br>");
 }
 async function saveLeadInputTracking(id){
  const card=$("input-requirement-tracker").querySelector('[data-input-track="'+id+'"]');if(!card)return;
@@ -239,6 +248,17 @@ $("feature-lead-select").addEventListener("change",async()=>{
  if(lead.package_name){const pkg=featurePackages.find(p=>p.name===lead.package_name);if(pkg){$("feature-package-select").value=pkg.id;}}
  if(["IN","US","CA","GB"].includes(String(lead.package_country_code||"").toUpperCase()))$("feature-country-select").value=lead.package_country_code.toUpperCase();
  await loadFeatureRows();await loadLeadInputTracking(false);
+});
+$("send-client-input-link").addEventListener("click",async()=>{
+ const leadId=$("feature-lead-select").value,feedback=$("feature-send-feedback"),btn=$("send-client-input-link");
+ if(!leadId){feedback.textContent="Select an existing lead first. The secure upload link is sent to the lead's saved email address.";feedback.className="feedback error";return;}
+ btn.disabled=true;btn.textContent="Creating secure link…";feedback.textContent="";
+ const {data,error}=await db.functions.invoke("client-input-portal",{body:{action:"create_link",enquiry_id:leadId}});
+ btn.disabled=false;btn.textContent="↗ Send Secure Input Upload Link";
+ if(error||!data?.ok){feedback.textContent="Could not create/send upload link: "+(data?.error||error?.message||"Please try again.");feedback.className="feedback error";return;}
+ await db.from("enquiry_communications").insert({enquiry_id:leadId,channel:"email",message:"Secure client input upload portal link sent to "+data.email+". Link expires "+new Date(data.expires_at).toLocaleString()+".",created_by:adminUser.id});
+ await loadCommunicationHistory(leadId);
+ feedback.textContent="Secure upload link sent to "+data.email+". It expires in 14 days.";feedback.className="feedback";
 });
 $("feature-send-email").addEventListener("click",async()=>{
  const pkg=featurePackages.find(p=>p.id===$("feature-package-select").value),email=$("feature-client-email").value.trim(),name=$("feature-client-name").value.trim(),country=$("feature-country-select").value,leadId=$("feature-lead-select").value,feedback=$("feature-send-feedback"),btn=$("feature-send-email");
