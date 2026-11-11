@@ -242,29 +242,49 @@ function refreshFeatureLeadOptions(){
 $("feature-country-select").addEventListener("change",()=>loadFeatureRows());
 $("feature-lead-select").addEventListener("change",async()=>{
  const lead=enquiries.find(x=>x.id===$("feature-lead-select").value);
- if(!lead)return;
+ const feedback=$("feature-send-feedback");
+ if(!lead){
+  $("feature-client-name").value="";
+  $("feature-client-email").value="";
+  $("feature-client-phone").value="";
+  $("feature-package-select").value="";
+  feedback.textContent="";
+  feedback.className="feedback";
+  await loadFeatureRows();
+  $("input-requirement-tracker").innerHTML='<p class="empty">Select an existing lead to track received and pending inputs.</p>';
+  return;
+ }
  $("feature-client-name").value=lead.customer_name||"";
  $("feature-client-email").value=lead.email||"";
  $("feature-client-phone").value=lead.phone||"";
 
- // Make sure the package list is ready before matching the package saved on this lead.
+ // Load the package catalogue before matching the package saved with this enquiry.
  if(!featurePackages.length)await loadFeaturePackages();
- const normalisePackageName=value=>String(value||"").trim().toLowerCase().replace(/\\s+/g," ");
- const leadPackageName=normalisePackageName(lead.package_name);
- const matchedPackage=leadPackageName
-  ?featurePackages.find(pkg=>normalisePackageName(pkg.name)===leadPackageName)
+ const normalisePackageName=value=>String(value||"").trim().toLowerCase().replace(/\s+/g," ");
+ const savedPackageName=normalisePackageName(lead.package_name);
+ const matchedPackage=savedPackageName
+  ?featurePackages.find(pkg=>normalisePackageName(pkg.name)===savedPackageName)
   :null;
+
  if(matchedPackage){
   $("feature-package-select").value=matchedPackage.id;
- }else if(lead.package_name){
-  $("feature-send-feedback").textContent="The lead's saved package (“"+lead.package_name+"”) could not be matched. Please choose the package manually.";
-  $("feature-send-feedback").className="feedback error";
+  feedback.textContent="Selected the package saved with this lead: "+matchedPackage.name+".";
+  feedback.className="feedback";
  }else{
-  $("feature-send-feedback").textContent="No package is linked to this lead. Please choose a package manually.";
-  $("feature-send-feedback").className="feedback";
+  // Do not leave the default Starter Website selected for a lead without a matching saved package.
+  $("feature-package-select").value="";
+  feedback.textContent=lead.package_name
+   ?"Saved package (“"+lead.package_name+"”) was not found in the active package list. Please check the package name."
+   :"This lead has no package recorded. Choose a package manually.";
+  feedback.className="feedback error";
  }
- const market=String(lead.package_country_code||"").toUpperCase();
- if(["IN","US","CA","GB"].includes(market))$("feature-country-select").value=market;
+
+ const market=String(lead.package_country_code||"").trim().toUpperCase();
+ if(["IN","US","CA","GB"].includes(market)){
+  $("feature-country-select").value=market;
+ }else{
+  $("feature-country-select").value="IN";
+ }
  await loadFeatureRows();
  await loadLeadInputTracking(false);
 });
