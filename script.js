@@ -196,7 +196,7 @@ if ("IntersectionObserver" in window) {
       const amount = custom ? "Let’s talk" : formatAmount(price.amount,market);
       const features = Array.isArray(pkg.features) ? pkg.features : [];
       const serviceType = safe(pkg.service_type || pkg.name);
-      return '<article class="pricing-card"><div class="pricing-card-top"><span class="pricing-kicker">PACKAGE '+String(index+1).padStart(2,"0")+'</span><span class="pricing-feature-count">'+features.length+' inclusions</span></div><h3>'+safe(pkg.name)+'</h3><p>'+safe(pkg.description||"A solution tailored to your business goals.")+'</p><div class="pricing-price-row"><div class="pricing-amount">'+amount+'</div><span class="pricing-period">'+(custom?"Custom proposal":safe(market.currency))+'</span></div><div class="pricing-market">'+safe(market.name)+'</div><ul class="pricing-features">'+features.map(f=>'<li>'+safe(f)+'</li>').join("")+'</ul><a class="pricing-cta" href="#contact" data-package-id="'+safe(pkg.id)+'" data-package="'+safe(pkg.name)+'" data-service="'+serviceType+'" data-country="'+safe(code)+'" data-country-name="'+safe(market.name)+'" data-currency="'+safe(market.currency)+'" data-price="'+(custom?"":safe(price.amount))+'" data-custom="'+(custom?"true":"false")+'">Discuss this package <span aria-hidden="true">↗</span></a></article>';
+      return '<article class="pricing-card"><div class="pricing-card-top"><span class="pricing-kicker">PACKAGE '+String(index+1).padStart(2,"0")+'</span><span class="pricing-feature-count">'+features.length+' inclusions</span></div><h3>'+safe(pkg.name)+'</h3><p>'+safe(pkg.description||"A solution tailored to your business goals.")+'</p><div class="pricing-quote-note">Tailored quotation after understanding your requirements</div><ul class="pricing-features">'+features.map(f=>'<li>'+safe(f)+'</li>').join("")+'</ul><a class="pricing-cta" href="#contact" data-package-id="'+safe(pkg.id)+'" data-package="'+safe(pkg.name)+'" data-service="'+serviceType+'" data-country="'+safe(code)+'" data-country-name="'+safe(market.name)+'" data-currency="'+safe(market.currency)+'" data-price="'+(custom?"":safe(price.amount))+'" data-custom="'+(custom?"true":"false")+'">Discuss this package <span aria-hidden="true">↗</span></a></article>';
     }).join("");
   }
   async function loadPackages() {
@@ -243,7 +243,7 @@ if ("IntersectionObserver" in window) {
     };
     const summary = document.getElementById("selected-package-summary");
     if (summary) {
-      summary.innerHTML = '<strong>Selected package: '+safe(link.dataset.package)+'</strong><span>'+safe(link.dataset.countryName)+' · '+safe(link.dataset.currency)+(custom?' · Custom quote': ' · '+safe(formatAmount(price,markets[link.dataset.country])))+'</span><button type="button" class="selected-package-clear">Remove package</button>';
+      summary.innerHTML = '<strong>Selected package: '+safe(link.dataset.package)+'</strong><span>We will prepare a tailored quotation after reviewing your requirements.</span><button type="button" class="selected-package-clear">Remove package</button>';
       summary.hidden = false;
       summary.querySelector(".selected-package-clear")?.addEventListener("click",() => {
         window.selectedPricingPackage = null; summary.hidden = true; summary.textContent = "";
